@@ -4,8 +4,9 @@ import click
 import logging
 import requests
 
-from snatched.snatched import HiddenPassword
+
 from utils.get_torrent import get_torrent
+from utils.hidden_password import HiddenPassword
 from utils.login import headers, login
 from utils.size import sizeof_fmt
 

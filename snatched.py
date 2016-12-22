@@ -5,6 +5,7 @@ from lxml import html
 import click as click
 import requests
 
+from utils.hidden_password import HiddenPassword
 from utils.login import logger, headers, login, BASE_URL
 
 
@@ -75,12 +76,7 @@ def get_upgradables_from_page(page, my_id, session, notify, my_auth):
     return upgradable, notifiable
 
 
-class HiddenPassword(object):
-    def __init__(self, password=''):
-        self.password = password
 
-    def __str__(self):
-        return '*' * 4
 
 @click.command()
 @click.option('--pth_user',
