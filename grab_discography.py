@@ -44,7 +44,7 @@ logging.root.setLevel(level=logging.INFO)
 @click.option('--formats', '-f', type=click.Choice(FORMAT), multiple=True)
 @click.option('--medias', '-m', type=click.Choice(MEDIA), multiple=True,
               help='If nothing is specified, all medias are taken')
-@click.option('--output', '-o', prompt=True, default=os.path.join(os.environ.get('HOME', ''), 'Downloads'))
+@click.option('--output', '-o', prompt=True, default=os.path.join(os.environ.get('HOME', ''), 'Downloads'), help='Defaults to HOME/Downloads environment variable')
 def dl_artist(pth_user, pth_password, artists, collages, releases, formats, medias, output):
 
 

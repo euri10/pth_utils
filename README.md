@@ -1,16 +1,18 @@
 Set of utilities for PTH.
 
-**snatched**
-
 Launch the script, enter username, password.
 
-Alternatively you can set them in env variables PTH_USER and PTH_PASSWORD
+Alternatively you can set them in environment variables PTH_USER and PTH_PASSWORD
 
 ```
 export PTH_USER=toto
-export PTH_PASSWOD=1234
+export PTH_PASSWORD=1234
 python snatched.py
 ```
+
+**snatched**
+
+
 ```
 ➜  pth_utils git:(master) ✗ python snatched.py --help          
 Usage: snatched.py [OPTIONS]
@@ -62,5 +64,6 @@ https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744
 
 _A script that lets you download the whole discography of one artist (letting you decide the quality and etc.)_
 https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&page=1
+
 _Option to download entire collages in a given format?_ 
 https://passtheheadphones.me/forums.php?page=3&action=viewthread&threadid=1744
