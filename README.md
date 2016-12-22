@@ -1,7 +1,16 @@
-Set of utilities for PTH
+Set of utilities for PTH.
+
+**snatched**
+
 Launch the script, enter username, password.
+
 Alternatively you can set them in env variables PTH_USER and PTH_PASSWORD
 
+```
+export PTH_USER=toto
+export PTH_PASSWOD=1234
+python snatched.py
+```
 ```
 Usage: snatched.py [OPTIONS]
 
