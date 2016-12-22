@@ -33,8 +33,15 @@ def login(username, password, session):
     else:
         logger.info('successful logging')
     mainpage = html.fromstring(r.content)
-    user_id = re.match('user\.php\?id=(\d+)', mainpage.xpath('//li[@id="nav_userinfo"]/a/@href')[0]).group(1)
-    return user_id
+    # user_id = re.match('user\.php\?id=(\d+)',
+    #                    mainpage.xpath('//li[@id="nav_userinfo"]/a/@href')[
+    #                        0]).group(1)
+    user_id, auth, passkey, authkey = re.match(
+        'feeds\.php\?feed=feed_news&user=(.*)&auth=(.*)&passkey=(.*)&authkey=(.*)',
+        mainpage.xpath(
+            '//head//link[@type="application/rss+xml"][@title="PassTheHeadphones - News"]/@href')[
+            0]).groups()
+    return user_id, auth, passkey, authkey
 
 
 def get_formats(torrent_group_id, session):
@@ -50,12 +57,19 @@ def get_formats(torrent_group_id, session):
             range(len(r.json()['response']['torrents']))]
 
 
-def notify_artist(artist_id):
-    """Set notification for an artist"""
-    pass
+def notify_artist(my_auth, session, artists_list):
+    """Set notification for all artists"""
+    url = 'https://passtheheadphones.me/user.php'
+    data = {'formid': 1, 'action': 'notify_handle', 'auth': my_auth, 'label1': 'pth_utils filter',
+            'artists1': ','.join(artists_list), 'formats1[]': 'FLAC', }
+    r = session.post(url, data=data)
+    if r.status_code == 200 and b'Error' not in r.content:
+        logger.info('Notification set for artists {}'.format(artists_list))
+    else:
+        logger.error('notify failed ? artists {}'.format(artists_list))
 
 
-def get_upgradables_from_page(page, my_id, session, notify):
+def get_upgradables_from_page(page, my_id, session, notify, my_auth):
     """On a snatched list page retrieve the torrents that could be upgraded
     from MP3 to FLAC """
     snatched_url = 'https://passtheheadphones.me/torrents.php'
@@ -67,28 +81,33 @@ def get_upgradables_from_page(page, my_id, session, notify):
         logger.info('getting page number')
         snatchedpage = html.fromstring(r.content)
     upgradable = []
+    notifiable = []
     snatched = []
     torrents = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[2]/@href')
     levels = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[2]/following-sibling::text()[1]')
-    artists = snatchedpage.xpath(
+    artists_id = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/@href')
-    for t in zip(torrents, levels, artists):
+    artists_name = snatchedpage.xpath(
+        '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/text()')
+    for t in zip(torrents, levels, artists_id, artists_name):
         snatched.append(t)
     for snatch in snatched:
         if re.match('.*MP3.*', snatch[1]):
-            torrent_group_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(1)
-            torrent_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(2)
+            torrent_group_id = re.match(
+                'torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(1)
+            torrent_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)',
+                                  snatch[0]).group(2)
             # https://passtheheadphones.me/artist.php?id=61125
             artist_id = re.match('artist\.php\?id=(\d+)', snatch[2]).group(1)
             if 'FLAC' in get_formats(torrent_group_id, session):
-                #TODO handle false positive
+                # TODO handle false positive
                 upgradable.append(snatch[0])
             else:
                 if notify:
-                    notify_artist(artist_id)
-    return upgradable
+                    notifiable.append(snatch[3])
+    return upgradable, notifiable
 
 
 class HiddenPassword(object):
@@ -126,9 +145,10 @@ def get_snatched_list(pth_user, pth_password, notify):
     session.headers = headers
     if isinstance(pth_password, HiddenPassword):
         pth_password = pth_password.password
-    my_id = login(pth_user, pth_password, session)
+    my_id, _, _, my_auth = login(pth_user, pth_password, session)
     # get the #  of pages, loops them to build upgradables list
     upgradables = []
+    notifiables = []
     snatched_url = 'https://passtheheadphones.me/torrents.php'
     params = {'page': 1, 'type': 'snatched', 'userid': my_id}
     r = session.get(snatched_url, params=params)
@@ -136,16 +156,25 @@ def get_snatched_list(pth_user, pth_password, notify):
         logger.info('error while getting snatched')
     else:
         snatchedpage = html.fromstring(r.content)
-        pages = set(re.match('torrents\.php\?page=(\d+).*', snatchedpage.xpath('//div[@class="linkbox"][1]/a/@href')[i]).group(1) for i in range(len(snatchedpage.xpath('//div[@class="linkbox"][1]/a/@href'))))
+        pages = set(re.match('torrents\.php\?page=(\d+).*', snatchedpage.xpath(
+            '//div[@class="linkbox"][1]/a/@href')[i]).group(1) for i in range(
+            len(snatchedpage.xpath('//div[@class="linkbox"][1]/a/@href'))))
         pages.add('1')
         # yeah I know I could get page 1 info right away...
         for page in pages:
             logger.info('getting page number {}'.format(page))
-            for up in get_upgradables_from_page(page, my_id, session, notify):
-                upgradables.append(up)
+            up, notif = get_upgradables_from_page(page, my_id, session, notify, my_auth)
+            for u in up:
+                upgradables.append(u)
+            for n in set(notif):
+                notifiables.append(n)
 
     for upgradable in upgradables:
-        logger.info('You can get a better version on: {}'.format(BASE_URL+upgradable))
+        logger.info(
+            'You can get a better version on: {}'.format(BASE_URL + upgradable))
+
+
+    notify_artist(my_auth, session, notifiables)
 
 
 if __name__ == '__main__':
