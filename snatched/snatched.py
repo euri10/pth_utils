@@ -3,45 +3,9 @@ import re
 import time
 from lxml import html
 import click as click
-import logging
 import requests
 
-BASE_URL = "https://passtheheadphones.me/"
-headers = {
-    'Content-type': 'application/x-www-form-urlencoded',
-    'Accept-Charset': 'utf-8',
-    'User-Agent': 'pth_utils @ https://github.com/euri10/pth_utils]'
-}
-
-# log stuff
-logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s')
-logging.root.setLevel(level=logging.INFO)
-
-
-def login(username, password, session):
-    """Logs in user"""
-    loginpage = 'https://passtheheadphones.me/login.php'
-    data = {'username': username,
-            'password': password,
-            'keeplogged': 1,
-            'login': 'Login'
-            }
-    r = session.post(loginpage, data=data)
-    if r.status_code == 200 and b'You entered an invalid password' in r.content:
-        logger.error('error while attempting to log')
-    else:
-        logger.info('successful logging')
-    mainpage = html.fromstring(r.content)
-    # user_id = re.match('user\.php\?id=(\d+)',
-    #                    mainpage.xpath('//li[@id="nav_userinfo"]/a/@href')[
-    #                        0]).group(1)
-    user_id, auth, passkey, authkey = re.match(
-        'feeds\.php\?feed=feed_news&user=(.*)&auth=(.*)&passkey=(.*)&authkey=(.*)',
-        mainpage.xpath(
-            '//head//link[@type="application/rss+xml"][@title="PassTheHeadphones - News"]/@href')[
-            0]).groups()
-    return user_id, auth, passkey, authkey
+from utils.login import logger, headers, login, BASE_URL
 
 
 def get_formats(torrent_group_id, session):
@@ -60,7 +24,8 @@ def get_formats(torrent_group_id, session):
 def notify_artist(my_auth, session, artists_list):
     """Set notification for all artists"""
     url = 'https://passtheheadphones.me/user.php'
-    data = {'formid': 1, 'action': 'notify_handle', 'auth': my_auth, 'label1': 'pth_utils filter',
+    data = {'formid': 1, 'action': 'notify_handle', 'auth': my_auth,
+            'label1': 'pth_utils filter',
             'artists1': ','.join(artists_list), 'formats1[]': 'FLAC', }
     r = session.post(url, data=data)
     if r.status_code == 200 and b'Error' not in r.content:
@@ -117,7 +82,6 @@ class HiddenPassword(object):
     def __str__(self):
         return '*' * 4
 
-
 @click.command()
 @click.option('--pth_user',
               prompt=True,
@@ -163,7 +127,8 @@ def get_snatched_list(pth_user, pth_password, notify):
         # yeah I know I could get page 1 info right away...
         for page in pages:
             logger.info('getting page number {}'.format(page))
-            up, notif = get_upgradables_from_page(page, my_id, session, notify, my_auth)
+            up, notif = get_upgradables_from_page(page, my_id, session, notify,
+                                                  my_auth)
             for u in up:
                 upgradables.append(u)
             for n in set(notif):
@@ -172,7 +137,6 @@ def get_snatched_list(pth_user, pth_password, notify):
     for upgradable in upgradables:
         logger.info(
             'You can get a better version on: {}'.format(BASE_URL + upgradable))
-
 
     notify_artist(my_auth, session, notifiables)
 
