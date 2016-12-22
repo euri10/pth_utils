@@ -30,18 +30,19 @@ Options:
 ```
 
 
-**artist_discography**
+**grab_discography**
 
 ```
- ➜  pth_utils git:(master) ✗ python artist_discography.py --help
-Usage: artist_discography.py [OPTIONS]
+ ➜  pth_utils git:(master) ✗ python grab_discography.py --help
+Usage: grab_discography.py [OPTIONS]
 
 Options:
   --pth_user TEXT                 Defaults to PTH_USER environment variable
   --pth_password TEXT             Defaults to PTH_PASSWORD environment
                                   variable
-  -a, --artists TEXT
-  -r, --releases [DJ Mix|Unknown|EP|Interview|Compilation|Live|Mixtape|Concert Recording|Bootleg|Demo|Remix|Single|Soundtrack|Album|Anthology]
+  -a, --artists TEXT              Artists id
+  -c, --collages TEXT             Collages id
+  -r, --releases [DJ Mix|Live|Remix|Mixtape|Bootleg|EP|Unknown|Single|Demo|Compilation|Anthology|Interview|Album|Soundtrack|Concert Recording]
   -f, --formats [MP3|FLAC|AAC|AC3|DTS]
   -m, --medias [CD|DVD|Vinyl|Soundboard|SACD|DAT|Cassette|WEB|Blu-Ray]
                                   If nothing is specified, all medias are
@@ -51,3 +52,15 @@ Options:
 
 ```
 
+**ideas**
+
+_a script to populate the 'similar artists' field of an artist's page._
+https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744
+
+
+**done**
+
+_A script that lets you download the whole discography of one artist (letting you decide the quality and etc.)_
+https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&page=1
+_Option to download entire collages in a given format?_ 
+https://passtheheadphones.me/forums.php?page=3&action=viewthread&threadid=1744

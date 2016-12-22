@@ -37,21 +37,30 @@ logging.root.setLevel(level=logging.INFO)
                   os.environ.get('PTH_PASSWORD', '')),
               help='Defaults to PTH_PASSWORD environment variable',
               hide_input=True)
-@click.option('--artists', '-a', multiple=True)
+@click.option('--artists', '-a', multiple=True, help='Artists id')
+@click.option('--collages', '-c', multiple=True, help='Collages id')
 @click.option('--releases', '-r', type=click.Choice(RELEASE_TYPE.keys()),
               multiple=True)
 @click.option('--formats', '-f', type=click.Choice(FORMAT), multiple=True)
 @click.option('--medias', '-m', type=click.Choice(MEDIA), multiple=True,
               help='If nothing is specified, all medias are taken')
 @click.option('--output', '-o', prompt=True, default=os.path.join(os.environ.get('HOME', ''), 'Downloads'))
-def dl_artist(pth_user, pth_password, artists, releases, formats, medias, output):
-    logger.info('Downloading {}'.format(releases))
-    logger.info('Downloading {}'.format(formats))
-    logger.info('Downloading {}'.format(medias))
+def dl_artist(pth_user, pth_password, artists, collages, releases, formats, medias, output):
 
-    #
+
+    if releases == ():
+        releases = RELEASE_TYPE
+    if formats == ():
+        formats = FORMAT
     if medias == ():
         medias = MEDIA
+
+    logger.info('Downloading artist ids: {}'.format(artists))
+    logger.info('Downloading collage ids: {}'.format(collages))
+    logger.info('Downloading releases: {}'.format(releases))
+    logger.info('Downloading formats: {}'.format(formats))
+    logger.info('Downloading medias: {}'.format(medias))
+
     # log into pth, gets the id
     session = requests.Session()
     session.headers = headers
@@ -66,6 +75,18 @@ def dl_artist(pth_user, pth_password, artists, releases, formats, medias, output
         r = session.get(url, params=params)
         allowed_releases = [v for k, v in RELEASE_TYPE.items() if k in releases]
         for tg in r.json()['response']['torrentgroup']:
+            if tg['releaseType'] in allowed_releases:
+                for t in tg['torrent']:
+                    if t['format'] in formats and t['media'] in medias:
+                        dl_list.append(t)
+        total_size = 0
+        for d in dl_list:
+            total_size += d['size']
+    for collage in collages:
+        params = {'action': 'collage', 'id': collage}
+        r = session.get(url, params=params)
+        allowed_releases = [v for k, v in RELEASE_TYPE.items() if k in releases]
+        for tg in r.json()['response']['torrentgroups']:
             if tg['releaseType'] in allowed_releases:
                 for t in tg['torrent']:
                     if t['format'] in formats and t['media'] in medias:
