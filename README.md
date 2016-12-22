@@ -29,6 +29,9 @@ Options:
 
 ```
 
+
+**artist_discography**
+
 ```
  ➜  pth_utils git:(master) ✗ python artist_discography.py --help
 Usage: artist_discography.py [OPTIONS]
