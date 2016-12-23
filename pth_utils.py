@@ -19,7 +19,7 @@ def cli():
     pass
 
 
-@click.command()
+@click.command(short_help='Builds a list of snatched MP3s that have a FLAC. You can set up notifications for artists where there is NO FLAC and you snatched the MP3')
 @click.option('--pth_user',
               prompt=True,
               default=lambda: os.environ.get('PTH_USER', ''),
@@ -79,7 +79,7 @@ def checker(pth_user, pth_password, notify):
 
 
 
-@click.command()
+@click.command(short_help='Grabs an entire artist discography or a collage given filters')
 @click.option('--pth_user',
               prompt=True,
               default=lambda: os.environ.get('PTH_USER', ''),
