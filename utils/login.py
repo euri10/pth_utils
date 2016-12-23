@@ -4,7 +4,8 @@ import re
 from lxml import html
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s')
+# logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s')
+logging.basicConfig()
 logging.root.setLevel(level=logging.INFO)
 
 BASE_URL = "https://passtheheadphones.me/"

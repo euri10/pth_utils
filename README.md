@@ -16,16 +16,18 @@ Options:
   --help  Show this message and exit.
 
 Commands:
-  checker  Builds a list of snatched MP3s that have a FLAC. You can set up
-           notifications for artists where there is NO FLAC and you snatched
-           the MP3
-  grabber  Grabs an entire artist discography or a collage given filters
-  similar  Fetch similar artists from Last.fm and fills pth
+  checker         Builds a list of snatched MP3s that have a FLAC. You can set
+                  up notifications for artists where there is NO FLAC and you
+                  snatched the MP3
+  collage_notify  Filter collages and subscribe to them
+  grabber         Grabs an entire artist discography or a collage given
+                  filters
+  similar         Fetch similar artists from Last.fm and fills pth
+
 
 ```
 
 **Ideas**
-
 
 
 
@@ -39,3 +41,6 @@ https://passtheheadphones.me/forums.php?page=3&action=viewthread&threadid=1744
 
 _a script to populate the 'similar artists' field of an artist's page._
 https://passtheheadphones.me/forums.php?page=10&action=viewthread&threadid=1744
+
+_I would love to subscribe to collages, notification-style. Would this be possible?_
+https://passtheheadphones.me/forums.php?page=6&action=viewthread&threadid=1744

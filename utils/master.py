@@ -8,3 +8,4 @@ RELEASE_TYPE = {'Album': 1, 'Soundtrack': 3, 'EP': 5, 'Anthology': 6,
 FORMAT = ['MP3', 'FLAC', 'AAC', 'AC3', 'DTS']
 MEDIA = ['CD', 'DVD', 'Vinyl', 'Soundboard', 'SACD', 'DAT', 'Cassette', 'WEB',
          'Blu-Ray']
+COLLAGE_CATEGORY = ['Personal', 'Theme', 'Genre introduction', 'Discography', 'Label', 'Staff picks', 'Charts', 'Artists']

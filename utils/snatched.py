@@ -31,6 +31,18 @@ def notify_artist(my_auth, session, artists_list):
         logger.error('notify failed ? artists {}'.format(artists_list))
 
 
+def subscribe_collage(my_auth, session, collage_id):
+    """Subscribe a collage"""
+    url = 'https://passtheheadphones.me/userhistory.php'
+    params = {'action': 'collage_subscribe', 'collageid': collage_id,
+              'auth': my_auth}
+    r = session.get(url, params=params)
+    if r.status_code == 200:
+        logger.info('Subscription set for collage {}'.format(collage_id))
+    else:
+        logger.info('Subscription failed for collage {}'.format(collage_id))
+
+
 def get_upgradables_from_page(page, my_id, session, notify, my_auth):
     """On a snatched list page retrieve the torrents that could be upgraded
     from MP3 to FLAC """

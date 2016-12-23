@@ -2,17 +2,22 @@ import os
 import re
 
 import click
+import logging
 import requests
 from lxml import html
 
 from utils.get_torrent import get_torrent
 from utils.hidden_password import HiddenPassword
-from utils.login import headers, logger, BASE_URL
+from utils.login import headers, BASE_URL
 from utils.login import login
-from utils.master import RELEASE_TYPE, FORMAT, MEDIA
+from utils.master import RELEASE_TYPE, FORMAT, MEDIA, COLLAGE_CATEGORY
 from utils.size import sizeof_fmt
-from utils.snatched import get_upgradables_from_page, notify_artist
+from utils.snatched import get_upgradables_from_page, notify_artist, \
+    subscribe_collage
 
+logger = logging.getLogger(__name__)
+logging.basicConfig()
+logging.root.setLevel(level=logging.INFO)
 
 @click.group()
 def cli():
@@ -194,7 +199,8 @@ def similar(pth_user, pth_password, lastfm_api_key, artists,
         params = {'action': 'artist', 'id': artist}
         r = session.get(url, params=params)
         pth_artist_name = r.json()['response']['name']
-        pth_similars = [s['name'] for s in r.json()['response']['similarArtists']]
+        pth_similars = [s['name'] for s in
+                        r.json()['response']['similarArtists']]
 
         lfm_url = 'http://ws.audioscrobbler.com/2.0/?'
         lfm_params = {'method': 'artist.getsimilar', 'artist': pth_artist_name,
@@ -213,8 +219,10 @@ def similar(pth_user, pth_password, lastfm_api_key, artists,
                     # params_sim = {'action': 'artist', 'artistname': sim}
                     # rsim = session.get(url, params=params_sim)
                     # pth_artist_id = rsim.json()['response']['id']
-                    datasim = {'action': 'add_similar', 'auth': authkey, 'artistid': artist, 'artistname': sim}
-                    createsim = session.post('https://passtheheadphones.me/artist.php', data=datasim)
+                    datasim = {'action': 'add_similar', 'auth': authkey,
+                               'artistid': artist, 'artistname': sim}
+                    createsim = session.post(
+                        'https://passtheheadphones.me/artist.php', data=datasim)
                     if createsim.status_code == 200 and sim.encode() not in createsim.content:
                         logger.info('not added')
                     else:
@@ -222,9 +230,84 @@ def similar(pth_user, pth_password, lastfm_api_key, artists,
             else:
                 logger.info('Artist {} is already in pth similars'.format(sim))
 
+
+@click.command(short_help='Filter collages and subscribe to them')
+@click.option('--pth_user',
+              prompt=True,
+              default=lambda: os.environ.get('PTH_USER', ''),
+              help='Defaults to PTH_USER environment variable')
+@click.option('--pth_password',
+              prompt=True,
+              default=lambda: HiddenPassword(
+                  os.environ.get('PTH_PASSWORD', '')),
+              help='Defaults to PTH_PASSWORD environment variable',
+              hide_input=True)
+@click.option('--search', '-s', help='Search term')
+@click.option('--tags', '-t', multiple=True, help='Tags')
+@click.option('--tags_type', '-tt', default='all', type=click.Choice(['any', 'all']))
+@click.option('--categories', '-c', multiple=True, type=click.Choice(COLLAGE_CATEGORY))
+@click.option('--search_in', '-si', type=click.Choice(['name', 'desc']))
+def collage_notify(pth_user, pth_password, search, tags, tags_type, categories,
+                   search_in):
+    # log into pth, gets the id
+    session = requests.Session()
+    session.headers = headers
+    if isinstance(pth_password, HiddenPassword):
+        pth_password = pth_password.password
+    my_id, auth, passkey, authkey = login(pth_user, pth_password, session)
+
+    cats_filter = [1 if cat in categories else 0 for cat in COLLAGE_CATEGORY]
+    if search_in is 'desc':
+        search_in = 'description'
+    else:
+        search_in = 'c.name'
+
+    if tags_type is 'all':
+        tags_type = 1
+    else:
+        tags_type = 0
+    url = 'https://passtheheadphones.me/collages.php'
+    params = {'action': 'search', 'search': search, 'tags': ','.join(tags),
+              'tags_type': tags_type, 'cats[0]': cats_filter[0],
+              'cats[1]': cats_filter[1], 'cats[2]': cats_filter[2],
+              'cats[3]': cats_filter[3], 'cats[4]': cats_filter[4],
+              'cats[5]': cats_filter[5], 'cats[6]': cats_filter[6],
+              'cats[7]': cats_filter[7], 'type': search_in, 'order_by': 'Time',
+              'order_way': 'Descending'}
+
+    r = session.get(url, params=params)
+    logger.info(r.url)
+    collage_page = html.fromstring(r.content)
+    # loop through pages
+    pages = set(re.match('collages\.php\?page=(\d+).*', collage_page.xpath('//div[@class="linkbox"][2]/a/@href')[i]).group(1) for i in range(len(collage_page.xpath('//div[@class="linkbox"][2]/a/@href'))))
+    pages.add('1')
+    collages_tonotify = []
+    # yeah I know I could get page 1 info right away...
+    for page in pages:
+        params = {'page': page, 'action': 'search', 'search': search, 'tags': ','.join(tags),
+                  'tags_type': tags_type, 'cats[0]': cats_filter[0],
+                  'cats[1]': cats_filter[1], 'cats[2]': cats_filter[2],
+                  'cats[3]': cats_filter[3], 'cats[4]': cats_filter[4],
+                  'cats[5]': cats_filter[5], 'cats[6]': cats_filter[6],
+                  'cats[7]': cats_filter[7], 'type': search_in,
+                  'order_by': 'Time',
+                  'order_way': 'Descending'}
+        r = session.get(url, params=params)
+        logger.info(r.url)
+        collage_page = html.fromstring(r.content)
+        # c
+        collages = [re.match('collages\.php\?id=(\d+)', collage_page.xpath('//table[@class="collage_table"]/tr/td[2]/a/@href')[i]).group(1) for i in range(len(collage_page.xpath('//table[@class="collage_table"]/tr/td[2]/a/@href')))]
+        for col in collages:
+            collages_tonotify.append(col)
+        logger.info('Found {} collages'.format(len(collages_tonotify)))
+        click.confirm('Are you sure you wanna add those {} collages?'.format(len(collages_tonotify)), abort=True)
+        for ctn in collages_tonotify:
+            subscribe_collage(authkey, session, ctn)
+
 cli.add_command(checker)
 cli.add_command(grabber)
 cli.add_command(similar)
+cli.add_command(collage_notify)
 
 if __name__ == '__main__':
     cli()
