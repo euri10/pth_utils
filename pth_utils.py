@@ -19,7 +19,8 @@ def cli():
     pass
 
 
-@click.command(short_help='Builds a list of snatched MP3s that have a FLAC. You can set up notifications for artists where there is NO FLAC and you snatched the MP3')
+@click.command(
+    short_help='Builds a list of snatched MP3s that have a FLAC. You can set up notifications for artists where there is NO FLAC and you snatched the MP3')
 @click.option('--pth_user',
               prompt=True,
               default=lambda: os.environ.get('PTH_USER', ''),
@@ -78,8 +79,8 @@ def checker(pth_user, pth_password, notify):
     notify_artist(my_auth, session, notifiables)
 
 
-
-@click.command(short_help='Grabs an entire artist discography or a collage given filters')
+@click.command(
+    short_help='Grabs an entire artist discography or a collage given filters')
 @click.option('--pth_user',
               prompt=True,
               default=lambda: os.environ.get('PTH_USER', ''),
@@ -100,7 +101,8 @@ def checker(pth_user, pth_password, notify):
 @click.option('--output', '-o', prompt=True,
               default=os.path.join(os.environ.get('HOME', ''), 'Downloads'),
               help='Defaults to HOME/Downloads environment variable')
-def grabber(pth_user, pth_password, artists, collages, releases, formats, medias, output):
+def grabber(pth_user, pth_password, artists, collages, releases, formats,
+            medias, output):
     """Grabs an entire artist discography or a collage given filters"""
     if releases == ():
         releases = RELEASE_TYPE
@@ -158,8 +160,74 @@ def grabber(pth_user, pth_password, artists, collages, releases, formats, medias
         get_torrent(d['id'], authkey, passkey, session, output)
 
 
+@click.command(short_help='Fetch similar artists from Last.fm and fills pth')
+@click.option('--pth_user',
+              prompt=True,
+              default=lambda: os.environ.get('PTH_USER', ''),
+              help='Defaults to PTH_USER environment variable')
+@click.option('--pth_password',
+              prompt=True,
+              default=lambda: HiddenPassword(
+                  os.environ.get('PTH_PASSWORD', '')),
+              help='Defaults to PTH_PASSWORD environment variable',
+              hide_input=True)
+@click.option('--lastfm_api_key',
+              prompt=True,
+              default=lambda: os.environ.get('LASTFM_API_KEY', ''),
+              help='Defaults to LASTFM_API_KEY environment variable')
+@click.option('--lastfm_secret',
+              prompt=True,
+              default=lambda: os.environ.get('LASTFM_SECRET', ''),
+              help='Defaults to LASTFM_SECRET environment variable')
+@click.option('--artists', '-a', multiple=True, help='Artists id')
+@click.option('--trigger', '-t', multiple=True,
+              help='Match level required to add to similar list')
+def similar(pth_user, pth_password, lastfm_api_key, lastfm_secret, artists,
+            trigger):
+    """Fetch similar artists from Last.fm and fills pth"""
+
+    # log into pth, gets the id
+    session = requests.Session()
+    session.headers = headers
+    if isinstance(pth_password, HiddenPassword):
+        pth_password = pth_password.password
+    my_id, auth, passkey, authkey = login(pth_user, pth_password, session)
+
+    url = 'https://passtheheadphones.me/ajax.php'
+    for artist in artists:
+        params = {'action': 'artist', 'id': artist}
+        r = session.get(url, params=params)
+        pth_artist_name = r.json()['response']['name']
+        pth_similars = [s['name'] for s in r.json()['response']['similarArtists']]
+
+        lfm_url = 'http://ws.audioscrobbler.com/2.0/?'
+        lfm_params = {'method': 'artist.getsimilar', 'artist': pth_artist_name,
+                      'api_key': lastfm_api_key, 'format': 'json'}
+        lfm_r = requests.get(lfm_url, params=lfm_params, )
+        if lfm_r.status_code == 200:
+            similars = [sa['name'] for sa in
+                        lfm_r.json()['similarartists']['artist'] if
+                        sa['match'] > trigger[0]]
+        logger.info('found {} similar artists with a match > {}: {}'.format(
+            len(similars), trigger[0], similars))
+
+        for sim in similars:
+            if sim not in pth_similars:
+                params_sim = {'action': 'artist', 'artistname': sim}
+                rsim = session.get(url, params=params_sim)
+                pth_artist_id = rsim.json()['response']['id']
+                datasim = {'action': 'add_similar', 'auth': authkey, 'artistid': artist, 'artistname': sim}
+                createsim = session.post('https://passtheheadphones.me/artist.php', data=datasim)
+                if createsim.status_code == 200 and sim.encode() not in createsim.content:
+                    logger.info('not added')
+                else:
+                    pass
+            else:
+                logger.info('Artist {} is already in pth similars'.format(sim))
+
 cli.add_command(checker)
 cli.add_command(grabber)
+cli.add_command(similar)
 
 if __name__ == '__main__':
     cli()
