@@ -101,7 +101,7 @@ def checker(pth_user, pth_password, notify):
               default=os.path.join(os.environ.get('HOME', ''), 'Downloads'),
               help='Defaults to HOME/Downloads environment variable')
 def grabber(pth_user, pth_password, artists, collages, releases, formats, medias, output):
-
+    """Grabs an entire artist discography or a collage given filters"""
     if releases == ():
         releases = RELEASE_TYPE
     if formats == ():
