@@ -38,4 +38,4 @@ _Option to download entire collages in a given format?_
 https://passtheheadphones.me/forums.php?page=3&action=viewthread&threadid=1744
 
 _a script to populate the 'similar artists' field of an artist's page._
-https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744
+https://passtheheadphones.me/forums.php?page=10&action=viewthread&threadid=1744
