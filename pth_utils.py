@@ -175,14 +175,10 @@ def grabber(pth_user, pth_password, artists, collages, releases, formats,
               prompt=True,
               default=lambda: os.environ.get('LASTFM_API_KEY', ''),
               help='Defaults to LASTFM_API_KEY environment variable')
-@click.option('--lastfm_secret',
-              prompt=True,
-              default=lambda: os.environ.get('LASTFM_SECRET', ''),
-              help='Defaults to LASTFM_SECRET environment variable')
 @click.option('--artists', '-a', multiple=True, help='Artists id')
 @click.option('--trigger', '-t', multiple=True,
               help='Match level required to add to similar list')
-def similar(pth_user, pth_password, lastfm_api_key, lastfm_secret, artists,
+def similar(pth_user, pth_password, lastfm_api_key, artists,
             trigger):
     """Fetch similar artists from Last.fm and fills pth"""
 
