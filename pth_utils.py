@@ -209,15 +209,16 @@ def similar(pth_user, pth_password, lastfm_api_key, artists,
 
         for sim in similars:
             if sim not in pth_similars:
-                params_sim = {'action': 'artist', 'artistname': sim}
-                rsim = session.get(url, params=params_sim)
-                pth_artist_id = rsim.json()['response']['id']
-                datasim = {'action': 'add_similar', 'auth': authkey, 'artistid': artist, 'artistname': sim}
-                createsim = session.post('https://passtheheadphones.me/artist.php', data=datasim)
-                if createsim.status_code == 200 and sim.encode() not in createsim.content:
-                    logger.info('not added')
-                else:
-                    pass
+                if click.confirm('Do you want to add {}?'.format(sim)):
+                    # params_sim = {'action': 'artist', 'artistname': sim}
+                    # rsim = session.get(url, params=params_sim)
+                    # pth_artist_id = rsim.json()['response']['id']
+                    datasim = {'action': 'add_similar', 'auth': authkey, 'artistid': artist, 'artistname': sim}
+                    createsim = session.post('https://passtheheadphones.me/artist.php', data=datasim)
+                    if createsim.status_code == 200 and sim.encode() not in createsim.content:
+                        logger.info('not added')
+                    else:
+                        pass
             else:
                 logger.info('Artist {} is already in pth similars'.format(sim))
 
