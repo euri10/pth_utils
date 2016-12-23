@@ -34,13 +34,13 @@ Commands:
 **Implemented**
 
 _A script that lets you download the whole discography of one artist (letting you decide the quality and etc.)_
-https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&page=1
+https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&postid=19122#post19122
 
 _Option to download entire collages in a given format?_ 
-https://passtheheadphones.me/forums.php?page=3&action=viewthread&threadid=1744
+https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&postid=37334#post37334
 
 _a script to populate the 'similar artists' field of an artist's page._
-https://passtheheadphones.me/forums.php?page=10&action=viewthread&threadid=1744
+https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&postid=20172#post20172
 
 _I would love to subscribe to collages, notification-style. Would this be possible?_
-https://passtheheadphones.me/forums.php?page=6&action=viewthread&threadid=1744
+https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&postid=52608#post52608

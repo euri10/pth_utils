@@ -295,12 +295,11 @@ def collage_notify(pth_user, pth_password, search, tags, tags_type, categories,
         r = session.get(url, params=params)
         logger.info(r.url)
         collage_page = html.fromstring(r.content)
-        # c
         collages = [re.match('collages\.php\?id=(\d+)', collage_page.xpath('//table[@class="collage_table"]/tr/td[2]/a/@href')[i]).group(1) for i in range(len(collage_page.xpath('//table[@class="collage_table"]/tr/td[2]/a/@href')))]
         for col in collages:
             collages_tonotify.append(col)
         logger.info('Found {} collages'.format(len(collages_tonotify)))
-        click.confirm('Are you sure you wanna add those {} collages?'.format(len(collages_tonotify)), abort=True)
+        click.confirm('Are you sure you want to subscribe to those {} collages?'.format(len(collages_tonotify)), abort=True)
         for ctn in collages_tonotify:
             subscribe_collage(authkey, session, ctn)
 
