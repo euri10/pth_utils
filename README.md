@@ -16,8 +16,10 @@ Options:
   --help  Show this message and exit.
 
 Commands:
-  checker  Builds a list of snatched MP3s that have a...
-  grabber  Grabs an entire artist discography or a...
+  checker  Builds a list of snatched MP3s that have a FLAC. You can set up
+           notifications for artists where there is NO FLAC and you snatched
+           the MP3
+  grabber  Grabs an entire artist discography or a collage given filters
 
 ```
 
