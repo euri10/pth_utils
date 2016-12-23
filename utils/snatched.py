@@ -1,12 +1,8 @@
-import os
 import re
 import time
 from lxml import html
-import click as click
-import requests
 
-from utils.hidden_password import HiddenPassword
-from utils.login import logger, headers, login, BASE_URL
+from utils.login import logger
 
 
 def get_formats(torrent_group_id, session):
@@ -74,68 +70,3 @@ def get_upgradables_from_page(page, my_id, session, notify, my_auth):
                 if notify:
                     notifiable.append(snatch[3])
     return upgradable, notifiable
-
-
-
-
-@click.command()
-@click.option('--pth_user',
-              prompt=True,
-              default=lambda: os.environ.get('PTH_USER', ''),
-              help='Defaults to PTH_USER environment variable')
-@click.option('--pth_password',
-              prompt=True,
-              default=lambda: HiddenPassword(
-                  os.environ.get('PTH_PASSWORD', '')),
-              help='Defaults to PTH_PASSWORD environment variable',
-              hide_input=True)
-@click.option('--notify/--no-notify',
-              prompt=True,
-              default=False,
-              help='Set to True to set up a notification for new FLAC for the '
-                   'artists where you got an MP3 and no FLAC is available yet, '
-                   'would be amazing to be able to do that per torrent group !')
-def get_snatched_list(pth_user, pth_password, notify):
-    """
-    Builds a list of snatched MP3s that have a FLAC.
-    You can set up notifications for artists where there is NO FLAC and you snatched the MP3
-    """
-    # log into pth, gets the id
-    session = requests.Session()
-    session.headers = headers
-    if isinstance(pth_password, HiddenPassword):
-        pth_password = pth_password.password
-    my_id, _, _, my_auth = login(pth_user, pth_password, session)
-    # get the #  of pages, loops them to build upgradables list
-    upgradables = []
-    notifiables = []
-    snatched_url = 'https://passtheheadphones.me/torrents.php'
-    params = {'page': 1, 'type': 'snatched', 'userid': my_id}
-    r = session.get(snatched_url, params=params)
-    if r.status_code != 200:
-        logger.info('error while getting snatched')
-    else:
-        snatchedpage = html.fromstring(r.content)
-        pages = set(re.match('torrents\.php\?page=(\d+).*', snatchedpage.xpath(
-            '//div[@class="linkbox"][1]/a/@href')[i]).group(1) for i in range(
-            len(snatchedpage.xpath('//div[@class="linkbox"][1]/a/@href'))))
-        pages.add('1')
-        # yeah I know I could get page 1 info right away...
-        for page in pages:
-            logger.info('getting page number {}'.format(page))
-            up, notif = get_upgradables_from_page(page, my_id, session, notify,
-                                                  my_auth)
-            for u in up:
-                upgradables.append(u)
-            for n in set(notif):
-                notifiables.append(n)
-
-    for upgradable in upgradables:
-        logger.info(
-            'You can get a better version on: {}'.format(BASE_URL + upgradable))
-
-    notify_artist(my_auth, session, notifiables)
-
-
-if __name__ == '__main__':
-    get_snatched_list()

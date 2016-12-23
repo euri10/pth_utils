@@ -1,6 +1,4 @@
 import logging
-
-# log stuff
 import re
 
 from lxml import html
@@ -15,6 +13,7 @@ headers = {
     'Accept-Charset': 'utf-8',
     'User-Agent': 'pth_utils @ https://github.com/euri10/pth_utils]'
 }
+
 
 def login(username, password, session):
     """Logs in user"""
