@@ -20,13 +20,14 @@ logging.basicConfig()
 logging.root.setLevel(level=logging.INFO)
 
 
+class PTH(object):
+    def __init__(self, pth_user=None, pth_password=None):
+        self.pth_user = pth_user
+        self.pth_password = pth_password
+
+pass_pth = click.make_pass_decorator(PTH)
+
 @click.group()
-def cli():
-    pass
-
-
-@click.command(
-    short_help='Builds a list of snatched MP3s that have a FLAC. You can set up notifications for artists where there is NO FLAC and you snatched the MP3')
 @click.option('--pth_user',
               prompt=True,
               default=lambda: os.environ.get('PTH_USER', ''),
@@ -37,13 +38,21 @@ def cli():
                   os.environ.get('PTH_PASSWORD', '')),
               help='Defaults to PTH_PASSWORD environment variable',
               hide_input=True)
+@click.pass_context
+def cli(ctx, pth_user, pth_password):
+    ctx.obj = PTH(pth_user, pth_password)
+
+
+@click.command(
+    short_help='Builds a list of snatched MP3s that have a FLAC. You can set up notifications for artists where there is NO FLAC and you snatched the MP3')
+@pass_pth
 @click.option('--notify/--no-notify',
               prompt=True,
               default=False,
               help='Set to True to set up a notification for new FLAC for the '
                    'artists where you got an MP3 and no FLAC is available yet, '
                    'would be amazing to be able to do that per torrent group !')
-def checker(pth_user, pth_password, notify):
+def checker(ctx, notify):
     """
     Builds a list of snatched MP3s that have a FLAC.
     You can set up notifications for artists where there is NO FLAC and you snatched the MP3
@@ -51,9 +60,9 @@ def checker(pth_user, pth_password, notify):
     # log into pth, gets the id
     session = requests.Session()
     session.headers = headers
-    if isinstance(pth_password, HiddenPassword):
-        pth_password = pth_password.password
-    my_id, _, _, authkey = login(pth_user, pth_password, session)
+    if isinstance(ctx.pth_password, HiddenPassword):
+        pth_password = ctx.pth_password.password
+    my_id, _, _, authkey = login(ctx.pth_user, pth_password, session)
     # get the #  of pages, loops them to build upgradables list
     upgradables = []
     notifiables = []
@@ -88,16 +97,7 @@ def checker(pth_user, pth_password, notify):
 
 @click.command(
     short_help='Grabs an entire artist discography or a collage given filters')
-@click.option('--pth_user',
-              prompt=True,
-              default=lambda: os.environ.get('PTH_USER', ''),
-              help='Defaults to PTH_USER environment variable')
-@click.option('--pth_password',
-              prompt=True,
-              default=lambda: HiddenPassword(
-                  os.environ.get('PTH_PASSWORD', '')),
-              help='Defaults to PTH_PASSWORD environment variable',
-              hide_input=True)
+@pass_pth
 @click.option('--artists', '-a', multiple=True, help='Artists id')
 @click.option('--collages', '-c', multiple=True, help='Collages id')
 @click.option('--releases', '-r', type=click.Choice(RELEASE_TYPE.keys()),
@@ -108,7 +108,7 @@ def checker(pth_user, pth_password, notify):
 @click.option('--output', '-o', prompt=True,
               default=os.path.join(os.environ.get('HOME', ''), 'Downloads'),
               help='Defaults to HOME/Downloads environment variable')
-def grabber(pth_user, pth_password, artists, collages, releases, formats,
+def grabber(ctx, artists, collages, releases, formats,
             medias, output):
     """Grabs an entire artist discography or a collage given filters"""
     if releases == ():
@@ -127,9 +127,9 @@ def grabber(pth_user, pth_password, artists, collages, releases, formats,
     # log into pth, gets the id
     session = requests.Session()
     session.headers = headers
-    if isinstance(pth_password, HiddenPassword):
-        pth_password = pth_password.password
-    my_id, auth, passkey, authkey = login(pth_user, pth_password, session)
+    if isinstance(ctx.pth_password, HiddenPassword):
+        pth_password = ctx.pth_password.password
+    my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
 
     url = 'https://passtheheadphones.me/ajax.php'
     dl_list = []
@@ -169,16 +169,7 @@ def grabber(pth_user, pth_password, artists, collages, releases, formats,
 
 
 @click.command(short_help='Fetch similar artists from Last.fm and fills pth')
-@click.option('--pth_user',
-              prompt=True,
-              default=lambda: os.environ.get('PTH_USER', ''),
-              help='Defaults to PTH_USER environment variable')
-@click.option('--pth_password',
-              prompt=True,
-              default=lambda: HiddenPassword(
-                  os.environ.get('PTH_PASSWORD', '')),
-              help='Defaults to PTH_PASSWORD environment variable',
-              hide_input=True)
+@pass_pth
 @click.option('--lastfm_api_key',
               prompt=True,
               default=lambda: os.environ.get('LASTFM_API_KEY', ''),
@@ -186,16 +177,16 @@ def grabber(pth_user, pth_password, artists, collages, releases, formats,
 @click.option('--artists', '-a', multiple=True, help='Artists id')
 @click.option('--trigger', '-t', multiple=True,
               help='Match level required to add to similar list')
-def similar(pth_user, pth_password, lastfm_api_key, artists,
+def similar(ctx, lastfm_api_key, artists,
             trigger):
     """Fetch similar artists from Last.fm and fills pth"""
 
     # log into pth, gets the id
     session = requests.Session()
     session.headers = headers
-    if isinstance(pth_password, HiddenPassword):
-        pth_password = pth_password.password
-    my_id, auth, passkey, authkey = login(pth_user, pth_password, session)
+    if isinstance(ctx.pth_password, HiddenPassword):
+        pth_password = ctx.pth_password.password
+    my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
 
     url = 'https://passtheheadphones.me/ajax.php'
     for artist in artists:
@@ -236,16 +227,7 @@ def similar(pth_user, pth_password, lastfm_api_key, artists,
 
 
 @click.command(short_help='Filter collages and subscribe to them')
-@click.option('--pth_user',
-              prompt=True,
-              default=lambda: os.environ.get('PTH_USER', ''),
-              help='Defaults to PTH_USER environment variable')
-@click.option('--pth_password',
-              prompt=True,
-              default=lambda: HiddenPassword(
-                  os.environ.get('PTH_PASSWORD', '')),
-              help='Defaults to PTH_PASSWORD environment variable',
-              hide_input=True)
+@pass_pth
 @click.option('--search', '-s', help='Search term')
 @click.option('--tags', '-t', multiple=True, help='Tags')
 @click.option('--tags_type', '-tt', default='all',
@@ -253,14 +235,14 @@ def similar(pth_user, pth_password, lastfm_api_key, artists,
 @click.option('--categories', '-c', multiple=True,
               type=click.Choice(COLLAGE_CATEGORY))
 @click.option('--search_in', '-si', type=click.Choice(['name', 'desc']))
-def collage_notify(pth_user, pth_password, search, tags, tags_type, categories,
+def collage_notify(ctx, search, tags, tags_type, categories,
                    search_in):
     # log into pth, gets the id
     session = requests.Session()
     session.headers = headers
-    if isinstance(pth_password, HiddenPassword):
-        pth_password = pth_password.password
-    my_id, auth, passkey, authkey = login(pth_user, pth_password, session)
+    if isinstance(ctx.pth_password, HiddenPassword):
+        pth_password = ctx.pth_password.password
+    my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
 
     cats_filter = [1 if cat in categories else 0 for cat in COLLAGE_CATEGORY]
     if search_in is 'desc':
