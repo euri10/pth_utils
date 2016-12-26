@@ -301,7 +301,7 @@ def collage_notify(ctx, search, tags, tags_type, categories,
             subscribe_collage(authkey, session, ctn)
         logout(authkey=authkey, session=session)
 
-@click.command(short_help='Subscribe to top artists of you lastfm id')
+@click.command(short_help='Subscribe to top artists of you lastfm user')
 @pass_pth
 @click.option('--lastfm_api_key',
               prompt=True,
@@ -311,7 +311,7 @@ def collage_notify(ctx, search, tags, tags_type, categories,
 @click.option('--period', '-p', type=click.Choice(LFM_PERIODS),
               help='The time period over which to retrieve top artists for')
 def lfm_subscriber(ctx, lastfm_api_key, lfm_user, period):
-    """Subscribe to top artists of you lastfm id"""
+    """Subscribe to top artists of you lastfm user"""
 
     # log into pth, gets the id
     session = requests.Session()

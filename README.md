@@ -9,11 +9,13 @@ Alternatively you can set them in environment variables PTH_USER and PTH_PASSWOR
 
 **Usage**
 ```
-➜  pth_utils git:(master) ✗ pth_utils --help
+➜  pth_utils git:(master) ✗ pth_utils
 Usage: pth_utils [OPTIONS] COMMAND [ARGS]...
 
 Options:
-  --help  Show this message and exit.
+  --pth_user TEXT      Defaults to PTH_USER environment variable
+  --pth_password TEXT  Defaults to PTH_PASSWORD environment variable
+  --help               Show this message and exit.
 
 Commands:
   checker         Builds a list of snatched MP3s that have a FLAC. You can set
@@ -22,8 +24,8 @@ Commands:
   collage_notify  Filter collages and subscribe to them
   grabber         Grabs an entire artist discography or a collage given
                   filters
+  lfm_subscriber  Subscribe to top artists of you lastfm user
   similar         Fetch similar artists from Last.fm and fills pth
-
 
 ```
 
@@ -44,3 +46,5 @@ https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&postid=2
 
 _I would love to subscribe to collages, notification-style. Would this be possible?_
 https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&postid=52608#post52608
+
+_Notifications for your top last.fm artists_
