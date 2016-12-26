@@ -9,3 +9,4 @@ FORMAT = ['MP3', 'FLAC', 'AAC', 'AC3', 'DTS']
 MEDIA = ['CD', 'DVD', 'Vinyl', 'Soundboard', 'SACD', 'DAT', 'Cassette', 'WEB',
          'Blu-Ray']
 COLLAGE_CATEGORY = ['Personal', 'Theme', 'Genre introduction', 'Discography', 'Label', 'Staff picks', 'Charts', 'Artists']
+LFM_PERIODS=['overall', '7day', '1month', '3month', '6month', '12month']

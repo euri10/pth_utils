@@ -20,11 +20,11 @@ def get_formats(torrent_group_id, session):
             range(len(r.json()['response']['torrents']))]
 
 
-def notify_artist(authkey, session, artists_list):
+def notify_artist(authkey, session, artists_list, notification_label):
     """Set notification for all artists"""
     url = 'https://passtheheadphones.me/user.php'
     data = {'formid': 1, 'action': 'notify_handle', 'auth': authkey,
-            'label1': 'pth_utils filter',
+            'label1': notification_label,
             'artists1': ','.join(artists_list), 'formats1[]': 'FLAC', }
     r = session.post(url, data=data)
     if r.status_code == 200 and b'Error' not in r.content:

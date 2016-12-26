@@ -10,7 +10,8 @@ from utils.get_torrent import get_torrent
 from utils.hidden_password import HiddenPassword
 from utils.login import headers, BASE_URL, logout
 from utils.login import login
-from utils.master import RELEASE_TYPE, FORMAT, MEDIA, COLLAGE_CATEGORY
+from utils.master import RELEASE_TYPE, FORMAT, MEDIA, COLLAGE_CATEGORY, \
+    LFM_PERIODS
 from utils.size import sizeof_fmt
 from utils.snatched import get_upgradables_from_page, notify_artist, \
     subscribe_collage
@@ -91,7 +92,7 @@ def checker(ctx, notify):
         logger.info(
             'You can get a better version on: {}'.format(BASE_URL + upgradable))
 
-    notify_artist(authkey=authkey, session=session, artists_list=notifiables)
+    notify_artist(authkey=authkey, session=session, artists_list=notifiables, notification_label='no flac but got mp3')
     logout(authkey=authkey, session=session)
 
 
@@ -300,11 +301,38 @@ def collage_notify(ctx, search, tags, tags_type, categories,
             subscribe_collage(authkey, session, ctn)
         logout(authkey=authkey, session=session)
 
+@click.command(short_help='Subscribe to top artists of you lastfm id')
+@pass_pth
+@click.option('--lastfm_api_key',
+              prompt=True,
+              default=lambda: os.environ.get('LASTFM_API_KEY', ''),
+              help='Defaults to LASTFM_API_KEY environment variable')
+@click.option('--lfm_user', '-l', help='Last.fm user')
+@click.option('--period', '-p', type=click.Choice(LFM_PERIODS),
+              help='The time period over which to retrieve top artists for')
+def lfm_subscriber(ctx, lastfm_api_key, lfm_user, period):
+    """Subscribe to top artists of you lastfm id"""
+
+    # log into pth, gets the id
+    session = requests.Session()
+    session.headers = headers
+    if isinstance(ctx.pth_password, HiddenPassword):
+        pth_password = ctx.pth_password.password
+    my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
+    lfm_url = 'http://ws.audioscrobbler.com/2.0/?'
+    lfm_params = {'method': 'user.gettopartists', 'user': lfm_user, 'period': period,
+                  'api_key': lastfm_api_key, 'format': 'json'}
+    lfm_r = requests.get(lfm_url, params=lfm_params, )
+    if lfm_r.status_code == 200:
+        lfm_top_artists= [lfm_r.json()['topartists']['artist'][i]['name'] for i in range(len(lfm_r.json()['topartists']['artist']))]
+        notify_artist(authkey=authkey, session=session, artists_list=lfm_top_artists, notification_label='top lastfm artists')
+
 
 cli.add_command(checker)
 cli.add_command(grabber)
 cli.add_command(similar)
 cli.add_command(collage_notify)
+cli.add_command(lfm_subscriber)
 
 if __name__ == '__main__':
     cli()
