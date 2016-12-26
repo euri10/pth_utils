@@ -105,7 +105,7 @@ def checker(ctx, notify):
 @click.option('--formats', '-f', type=click.Choice(FORMAT), multiple=True)
 @click.option('--medias', '-m', type=click.Choice(MEDIA), multiple=True,
               help='If nothing is specified, all medias are taken')
-@click.option('--output', '-o', prompt=True,
+@click.option('--output', '-o', prompt=True, type=click.Path(exists=True, file_okay=False),
               default=os.path.join(os.environ.get('HOME', ''), 'Downloads'),
               help='Defaults to HOME/Downloads environment variable')
 def grabber(ctx, artists, collages, releases, formats,
