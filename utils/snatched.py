@@ -1,9 +1,11 @@
 import re
 import time
+import logging
 from lxml import html
 
-from utils.login import logger
-
+logger = logging.getLogger(__name__)
+logging.basicConfig()
+logging.root.setLevel(level=logging.INFO)
 
 def get_formats(torrent_group_id, session):
     """Get formats for a given torrent group, uses the API because it can !"""
@@ -18,10 +20,10 @@ def get_formats(torrent_group_id, session):
             range(len(r.json()['response']['torrents']))]
 
 
-def notify_artist(my_auth, session, artists_list):
+def notify_artist(authkey, session, artists_list):
     """Set notification for all artists"""
     url = 'https://passtheheadphones.me/user.php'
-    data = {'formid': 1, 'action': 'notify_handle', 'auth': my_auth,
+    data = {'formid': 1, 'action': 'notify_handle', 'auth': authkey,
             'label1': 'pth_utils filter',
             'artists1': ','.join(artists_list), 'formats1[]': 'FLAC', }
     r = session.post(url, data=data)

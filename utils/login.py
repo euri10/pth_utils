@@ -4,7 +4,6 @@ import re
 from lxml import html
 
 logger = logging.getLogger(__name__)
-# logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s')
 logging.basicConfig()
 logging.root.setLevel(level=logging.INFO)
 
@@ -30,12 +29,17 @@ def login(username, password, session):
     else:
         logger.info('successful logging')
     mainpage = html.fromstring(r.content)
-    # user_id = re.match('user\.php\?id=(\d+)',
-    #                    mainpage.xpath('//li[@id="nav_userinfo"]/a/@href')[
-    #                        0]).group(1)
     user_id, auth, passkey, authkey = re.match(
         'feeds\.php\?feed=feed_news&user=(.*)&auth=(.*)&passkey=(.*)&authkey=(.*)',
         mainpage.xpath(
             '//head//link[@type="application/rss+xml"][@title="PassTheHeadphones - News"]/@href')[
             0]).groups()
     return user_id, auth, passkey, authkey
+
+
+def logout(authkey, session):
+    """Logs out user"""
+    logoutpage = 'https://passtheheadphones.me/logout.php'
+    params = {'auth': authkey}
+    session.get(logoutpage, params=params, allow_redirects=False)
+    logger.info('logged out')

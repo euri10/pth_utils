@@ -8,7 +8,7 @@ from lxml import html
 
 from utils.get_torrent import get_torrent
 from utils.hidden_password import HiddenPassword
-from utils.login import headers, BASE_URL
+from utils.login import headers, BASE_URL, logout
 from utils.login import login
 from utils.master import RELEASE_TYPE, FORMAT, MEDIA, COLLAGE_CATEGORY
 from utils.size import sizeof_fmt
@@ -18,6 +18,7 @@ from utils.snatched import get_upgradables_from_page, notify_artist, \
 logger = logging.getLogger(__name__)
 logging.basicConfig()
 logging.root.setLevel(level=logging.INFO)
+
 
 @click.group()
 def cli():
@@ -52,7 +53,7 @@ def checker(pth_user, pth_password, notify):
     session.headers = headers
     if isinstance(pth_password, HiddenPassword):
         pth_password = pth_password.password
-    my_id, _, _, my_auth = login(pth_user, pth_password, session)
+    my_id, _, _, authkey = login(pth_user, pth_password, session)
     # get the #  of pages, loops them to build upgradables list
     upgradables = []
     notifiables = []
@@ -71,7 +72,7 @@ def checker(pth_user, pth_password, notify):
         for page in pages:
             logger.info('getting page number {}'.format(page))
             up, notif = get_upgradables_from_page(page, my_id, session, notify,
-                                                  my_auth)
+                                                  authkey)
             for u in up:
                 upgradables.append(u)
             for n in set(notif):
@@ -81,7 +82,8 @@ def checker(pth_user, pth_password, notify):
         logger.info(
             'You can get a better version on: {}'.format(BASE_URL + upgradable))
 
-    notify_artist(my_auth, session, notifiables)
+    notify_artist(authkey=authkey, session=session, artists_list=notifiables)
+    logout(authkey=authkey, session=session)
 
 
 @click.command(
@@ -163,6 +165,7 @@ def grabber(pth_user, pth_password, artists, collages, releases, formats,
     click.confirm('Do you want to continue?', abort=True)
     for d in dl_list:
         get_torrent(d['id'], authkey, passkey, session, output)
+    logout(authkey=authkey, session=session)
 
 
 @click.command(short_help='Fetch similar artists from Last.fm and fills pth')
@@ -229,6 +232,7 @@ def similar(pth_user, pth_password, lastfm_api_key, artists,
                         pass
             else:
                 logger.info('Artist {} is already in pth similars'.format(sim))
+    logout(authkey=authkey, session=session)
 
 
 @click.command(short_help='Filter collages and subscribe to them')
@@ -244,8 +248,10 @@ def similar(pth_user, pth_password, lastfm_api_key, artists,
               hide_input=True)
 @click.option('--search', '-s', help='Search term')
 @click.option('--tags', '-t', multiple=True, help='Tags')
-@click.option('--tags_type', '-tt', default='all', type=click.Choice(['any', 'all']))
-@click.option('--categories', '-c', multiple=True, type=click.Choice(COLLAGE_CATEGORY))
+@click.option('--tags_type', '-tt', default='all',
+              type=click.Choice(['any', 'all']))
+@click.option('--categories', '-c', multiple=True,
+              type=click.Choice(COLLAGE_CATEGORY))
 @click.option('--search_in', '-si', type=click.Choice(['name', 'desc']))
 def collage_notify(pth_user, pth_password, search, tags, tags_type, categories,
                    search_in):
@@ -279,12 +285,15 @@ def collage_notify(pth_user, pth_password, search, tags, tags_type, categories,
     logger.info(r.url)
     collage_page = html.fromstring(r.content)
     # loop through pages
-    pages = set(re.match('collages\.php\?page=(\d+).*', collage_page.xpath('//div[@class="linkbox"][2]/a/@href')[i]).group(1) for i in range(len(collage_page.xpath('//div[@class="linkbox"][2]/a/@href'))))
+    pages = set(re.match('collages\.php\?page=(\d+).*', collage_page.xpath(
+        '//div[@class="linkbox"][2]/a/@href')[i]).group(1) for i in range(
+        len(collage_page.xpath('//div[@class="linkbox"][2]/a/@href'))))
     pages.add('1')
     collages_tonotify = []
     # yeah I know I could get page 1 info right away...
     for page in pages:
-        params = {'page': page, 'action': 'search', 'search': search, 'tags': ','.join(tags),
+        params = {'page': page, 'action': 'search', 'search': search,
+                  'tags': ','.join(tags),
                   'tags_type': tags_type, 'cats[0]': cats_filter[0],
                   'cats[1]': cats_filter[1], 'cats[2]': cats_filter[2],
                   'cats[3]': cats_filter[3], 'cats[4]': cats_filter[4],
@@ -295,13 +304,20 @@ def collage_notify(pth_user, pth_password, search, tags, tags_type, categories,
         r = session.get(url, params=params)
         logger.info(r.url)
         collage_page = html.fromstring(r.content)
-        collages = [re.match('collages\.php\?id=(\d+)', collage_page.xpath('//table[@class="collage_table"]/tr/td[2]/a/@href')[i]).group(1) for i in range(len(collage_page.xpath('//table[@class="collage_table"]/tr/td[2]/a/@href')))]
+        collages = [re.match('collages\.php\?id=(\d+)', collage_page.xpath(
+            '//table[@class="collage_table"]/tr/td[2]/a/@href')[i]).group(1) for
+                    i in range(len(collage_page.xpath(
+                '//table[@class="collage_table"]/tr/td[2]/a/@href')))]
         for col in collages:
             collages_tonotify.append(col)
         logger.info('Found {} collages'.format(len(collages_tonotify)))
-        click.confirm('Are you sure you want to subscribe to those {} collages?'.format(len(collages_tonotify)), abort=True)
+        click.confirm(
+            'Are you sure you want to subscribe to those {} collages?'.format(
+                len(collages_tonotify)), abort=True)
         for ctn in collages_tonotify:
             subscribe_collage(authkey, session, ctn)
+        logout(authkey=authkey, session=session)
+
 
 cli.add_command(checker)
 cli.add_command(grabber)
