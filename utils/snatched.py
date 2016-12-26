@@ -73,10 +73,10 @@ def get_upgradables_from_page(page, my_id, session, notify, my_auth):
         if re.match('.*MP3.*', snatch[1]):
             torrent_group_id = re.match(
                 'torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(1)
-            torrent_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)',
-                                  snatch[0]).group(2)
+            # torrent_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)',
+            #                       snatch[0]).group(2)
             # https://passtheheadphones.me/artist.php?id=61125
-            artist_id = re.match('artist\.php\?id=(\d+)', snatch[2]).group(1)
+            # artist_id = re.match('artist\.php\?id=(\d+)', snatch[2]).group(1)
             if 'FLAC' in get_formats(torrent_group_id, session):
                 # TODO handle false positive
                 upgradable.append(snatch[0])
