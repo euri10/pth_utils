@@ -30,11 +30,11 @@ pass_pth = click.make_pass_decorator(PTH)
 
 @click.group()
 @click.option('--pth_user',
-              prompt=True,
+              # prompt=True,
               default=lambda: os.environ.get('PTH_USER', ''),
               help='Defaults to PTH_USER environment variable')
 @click.option('--pth_password',
-              prompt=True,
+              # prompt=True,
               default=lambda: HiddenPassword(
                   os.environ.get('PTH_PASSWORD', '')),
               help='Defaults to PTH_PASSWORD environment variable',

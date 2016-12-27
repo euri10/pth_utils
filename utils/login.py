@@ -11,7 +11,7 @@ BASE_URL = "https://passtheheadphones.me/"
 headers = {
     'Content-type': 'application/x-www-form-urlencoded',
     'Accept-Charset': 'utf-8',
-    'User-Agent': 'pth_utils @ https://github.com/euri10/pth_utils]'
+    'User-Agent': 'pth_utils @ https://github.com/euri10/pth_utils'
 }
 
 
