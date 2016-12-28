@@ -1,3 +1,4 @@
+import json
 import os
 import re
 
@@ -14,7 +15,7 @@ from utils.master import RELEASE_TYPE, FORMAT, MEDIA, COLLAGE_CATEGORY, \
     LFM_PERIODS
 from utils.size import sizeof_fmt
 from utils.snatched import get_upgradables_from_page, notify_artist, \
-    subscribe_collage
+    subscribe_collage, get_formats, get_display_infos
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -81,11 +82,28 @@ def checker(ctx, notify):
         # yeah I know I could get page 1 info right away...
         for page in pages:
             logger.info('getting page number {}'.format(page))
-            up, notif = get_upgradables_from_page(page, my_id, session, notify,
-                                                  authkey)
-            for u in up:
+            torrents, levels, artists_id, artists_name = get_upgradables_from_page(page, my_id, session)
+
+            #test
+            upgradable = []
+            notifiable = []
+            snatched = []
+            for t in zip(torrents, levels, artists_id, artists_name):
+                snatched.append(t)
+            for snatch in snatched:
+                if re.match('.*MP3.*', snatch[1]):
+                    torrent_group_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(1)
+                    if 'FLAC' in get_formats(torrent_group_id, session):
+                        # TODO handle false positive
+                        upgradable.append(snatch[0])
+                    else:
+                        if notify:
+                            notifiable.append(snatch[3])
+
+            ##
+            for u in upgradable:
                 upgradables.append(u)
-            for n in set(notif):
+            for n in set(notifiable):
                 notifiables.append(n)
 
     for upgradable in upgradables:
@@ -328,11 +346,54 @@ def lfm_subscriber(ctx, lastfm_api_key, lfm_user, period):
         notify_artist(authkey=authkey, session=session, artists_list=lfm_top_artists, notification_label='top lastfm artists')
 
 
+@click.command(short_help='Displays info of your snatched torrents')
+@pass_pth
+def displayer(ctx):
+    """Displays info of your snatched torrents"""
+
+    # log into pth, gets the id
+    session = requests.Session()
+    session.headers = headers
+    if isinstance(ctx.pth_password, HiddenPassword):
+        pth_password = ctx.pth_password.password
+    my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
+    snatched_url = 'https://passtheheadphones.me/torrents.php'
+    params = {'page': 1, 'type': 'snatched', 'userid': my_id}
+    r = session.get(snatched_url, params=params)
+    if r.status_code != 200:
+        logger.info('error while getting snatched')
+    else:
+        snatchedpage = html.fromstring(r.content)
+        pages = set(re.match('torrents\.php\?page=(\d+).*', snatchedpage.xpath(
+            '//div[@class="linkbox"][1]/a/@href')[i]).group(1) for i in range(
+            len(snatchedpage.xpath('//div[@class="linkbox"][1]/a/@href'))))
+        pages.add('1')
+        # yeah I know I could get page 1 info right away...
+        pages = {5}
+        displayables = []
+        for page in pages:
+            logger.info('getting page number {}'.format(page))
+            torrents, levels, artists_id, artists_name = get_upgradables_from_page(page, my_id, session)
+            snatched = []
+            for t in zip(torrents, levels, artists_id, artists_name):
+                snatched.append(t)
+            for snatch in snatched[0:1]:
+                logger.info(snatch)
+                torrent_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(2)
+                info = get_display_infos(torrent_id, session)
+                displayables.append(info)
+        logger.info('Here\'s an attempt at giving you your snatched info')
+        extract = ['id', 'recordLabel', 'catalogueNumber']
+        data = [{extract[i]: dis[v]} for i,v in enumerate(extract) for dis in displayables]
+        with open('snatched_info.txt', 'w') as outfile:
+            json.dump(data, outfile)
+
 cli.add_command(checker)
 cli.add_command(grabber)
 cli.add_command(similar)
 cli.add_command(collage_notify)
 cli.add_command(lfm_subscriber)
+cli.add_command(displayer)
 
 if __name__ == '__main__':
     cli()

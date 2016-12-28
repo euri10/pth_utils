@@ -1,6 +1,5 @@
 import logging
 import re
-
 from lxml import html
 
 logger = logging.getLogger(__name__)

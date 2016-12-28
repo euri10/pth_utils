@@ -31,6 +31,8 @@ Commands:
 
 **Ideas**
 
+_Is there a script that let you view the release info (label/#cat etc) in your snatched torrents? Or possibly making a list of that info. Good information to backup or use when tagging the personal library_
+https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&postid=88270#post88270
 
 
 **Implemented**

@@ -1,4 +1,3 @@
-import re
 import time
 import logging
 from lxml import html
@@ -6,6 +5,7 @@ from lxml import html
 logger = logging.getLogger(__name__)
 logging.basicConfig()
 logging.root.setLevel(level=logging.INFO)
+
 
 def get_formats(torrent_group_id, session):
     """Get formats for a given torrent group, uses the API because it can !"""
@@ -18,6 +18,18 @@ def get_formats(torrent_group_id, session):
     r = session.get(url, params=params)
     return [r.json()['response']['torrents'][i]['format'] for i in
             range(len(r.json()['response']['torrents']))]
+
+def get_display_infos(torrent_id, session):
+    """Get formats for a given torrent id, uses the API because it can !"""
+    #ajax.php?action=torrent&id=<Torrent Id>
+    url = 'https://passtheheadphones.me/ajax.php'
+    params = {'action': 'torrent', 'id': torrent_id}
+    logger.info('getting info for {}'.format(torrent_id))
+    # rate limit hit if too fast, awful hard-coding
+    # TODO : better handling of rate limit, this one sucks but works
+    time.sleep(2)
+    r = session.get(url, params=params)
+    return r.json()['response']['group']
 
 
 def notify_artist(authkey, session, artists_list, notification_label):
@@ -45,7 +57,7 @@ def subscribe_collage(my_auth, session, collage_id):
         logger.info('Subscription failed for collage {}'.format(collage_id))
 
 
-def get_upgradables_from_page(page, my_id, session, notify, my_auth):
+def get_upgradables_from_page(page, my_id, session):
     """On a snatched list page retrieve the torrents that could be upgraded
     from MP3 to FLAC """
     snatched_url = 'https://passtheheadphones.me/torrents.php'
@@ -56,31 +68,15 @@ def get_upgradables_from_page(page, my_id, session, notify, my_auth):
     else:
         logger.info('getting page number')
         snatchedpage = html.fromstring(r.content)
-    upgradable = []
-    notifiable = []
-    snatched = []
-    torrents = snatchedpage.xpath(
-        '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[2]/@href')
+
+    torrents = snatchedpage.xpath('//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/@href', namespaces={"re": "http://exslt.org/regular-expressions"})
     levels = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[2]/following-sibling::text()[1]')
     artists_id = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/@href')
     artists_name = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/text()')
-    for t in zip(torrents, levels, artists_id, artists_name):
-        snatched.append(t)
-    for snatch in snatched:
-        if re.match('.*MP3.*', snatch[1]):
-            torrent_group_id = re.match(
-                'torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(1)
-            # torrent_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)',
-            #                       snatch[0]).group(2)
-            # https://passtheheadphones.me/artist.php?id=61125
-            # artist_id = re.match('artist\.php\?id=(\d+)', snatch[2]).group(1)
-            if 'FLAC' in get_formats(torrent_group_id, session):
-                # TODO handle false positive
-                upgradable.append(snatch[0])
-            else:
-                if notify:
-                    notifiable.append(snatch[3])
-    return upgradable, notifiable
+
+    return torrents, levels, artists_id, artists_name
+
+
