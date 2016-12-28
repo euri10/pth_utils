@@ -347,8 +347,9 @@ def lfm_subscriber(ctx, lastfm_api_key, lfm_user, period):
 
 
 @click.command(short_help='Displays info of your snatched torrents')
+@click.option('--outfile', '-o', type=click.Path(), default='snatched_info.json')
 @pass_pth
-def displayer(ctx):
+def displayer(ctx, outfile):
     """Displays info of your snatched torrents"""
 
     # log into pth, gets the id
@@ -369,7 +370,6 @@ def displayer(ctx):
             len(snatchedpage.xpath('//div[@class="linkbox"][1]/a/@href'))))
         pages.add('1')
         # yeah I know I could get page 1 info right away...
-        pages = {5}
         displayables = []
         for page in pages:
             logger.info('getting page number {}'.format(page))
@@ -377,16 +377,16 @@ def displayer(ctx):
             snatched = []
             for t in zip(torrents, levels, artists_id, artists_name):
                 snatched.append(t)
-            for snatch in snatched[0:1]:
+            for snatch in snatched:
                 logger.info(snatch)
                 torrent_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(2)
                 info = get_display_infos(torrent_id, session)
                 displayables.append(info)
         logger.info('Here\'s an attempt at giving you your snatched info')
         extract = ['id', 'recordLabel', 'catalogueNumber']
-        data = [{extract[i]: dis[v]} for i,v in enumerate(extract) for dis in displayables]
-        with open('snatched_info.txt', 'w') as outfile:
-            json.dump(data, outfile)
+        data = [{extract[i]: dis[v]} for i, v in enumerate(extract) for dis in displayables]
+        with open(outfile, 'w') as output:
+            json.dump(data, output)
 
 cli.add_command(checker)
 cli.add_command(grabber)

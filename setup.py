@@ -6,7 +6,6 @@ setup(
     py_modules=['pth_utils'],
     install_requires=[
         'Click', 'requests', 'lxml',
-
     ],
     entry_points='''
         [console_scripts]
