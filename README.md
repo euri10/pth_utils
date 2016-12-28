@@ -9,7 +9,7 @@ Alternatively you can set them in environment variables PTH_USER and PTH_PASSWOR
 
 **Usage**
 ```
-➜  pth_utils git:(master) ✗ pth_utils
+➜  pth_utils git:(master) ✗ pth_utils                                           
 Usage: pth_utils [OPTIONS] COMMAND [ARGS]...
 
 Options:
@@ -22,17 +22,16 @@ Commands:
                   up notifications for artists where there is NO FLAC and you
                   snatched the MP3
   collage_notify  Filter collages and subscribe to them
+  displayer       Displays info of your snatched torrents
   grabber         Grabs an entire artist discography or a collage given
                   filters
   lfm_subscriber  Subscribe to top artists of you lastfm user
   similar         Fetch similar artists from Last.fm and fills pth
 
+
 ```
 
 **Ideas**
-
-_Is there a script that let you view the release info (label/#cat etc) in your snatched torrents? Or possibly making a list of that info. Good information to backup or use when tagging the personal library_
-https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&postid=88270#post88270
 
 
 **Implemented**
@@ -50,3 +49,7 @@ _I would love to subscribe to collages, notification-style. Would this be possib
 https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&postid=52608#post52608
 
 _Notifications for your top last.fm artists_
+
+_Is there a script that let you view the release info (label/#cat etc) in your snatched torrents? Or possibly making a list of that info. Good information to backup or use when tagging the personal library_
+https://passtheheadphones.me/forums.php?action=viewthread&threadid=1744&postid=88270#post88270
+
