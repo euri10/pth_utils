@@ -71,6 +71,8 @@ def get_upgradables_from_page(page, my_id, session):
 
     torrents = snatchedpage.xpath('//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/@href', namespaces={"re": "http://exslt.org/regular-expressions"})
     logger.debug('{} items: {}'.format(len(torrents), torrents))
+    if not len(torrents):
+        logger.debug(html.tostring(snatchedpage.xpath('//tr[@class="torrent torrent_row"]')[0]))
     levels = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[2]/following-sibling::text()[1]')
     logger.debug('{} items: {}'.format(len(levels), levels))
