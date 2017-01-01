@@ -19,7 +19,7 @@ from utils.snatched import get_upgradables_from_page, notify_artist, \
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
-logging.root.setLevel(level=logging.INFO)
+logging.root.setLevel(level=logging.DEBUG)
 
 
 class PTH(object):
@@ -388,12 +388,47 @@ def displayer(ctx, outfile):
         with open(outfile, 'w') as output:
             json.dump(data, output)
 
+@click.command()
+@pass_pth
+@click.option('--mix_url','-m', help='Beatport mix url')
+def mixer(ctx, mix_url):
+    headers_beatport = {'Host': 'mixes.beatport.com', 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0', 'Referer': 'http://mixes.beatport.com/'}
+# X-Requested-With: XMLHttpRequest
+    session_bp = requests.session()
+    session_bp.headers = headers_beatport
+    mix_url = 'http://mixes.beatport.com/mix/chillout-deep-house-tropical-beach-mix/129388'
+
+    r = session_bp.get(mix_url)
+    mixpage = html.fromstring(r.content)
+    titles = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[5]/a/text()')
+    titles_links = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[5]/a/@href')
+    labels_links =mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[7]/a/@href')
+    print(r)
+
+    session = requests.Session()
+    session.headers = headers
+    if isinstance(ctx.pth_password, HiddenPassword):
+        pth_password = ctx.pth_password.password
+    my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
+
+    url = 'https://passtheheadphones.me/ajax.php'
+    for title in titles:
+        #remove remix / original mix stuff
+        if re.match('(.*) (\(.*\))', title) is not None:
+            stitle = re.match('(.*) (\(.*\))', title).group(1)
+        else:
+            stitle = title
+        search_params = {'action': 'browse', 'filelist': stitle }
+        rs = session.get(url=url, params=search_params)
+        print(len(rs.json()['response']['results']))
+
 cli.add_command(checker)
 cli.add_command(grabber)
 cli.add_command(similar)
 cli.add_command(collage_notify)
 cli.add_command(lfm_subscriber)
 cli.add_command(displayer)
+cli.add_command(mixer)
 
 if __name__ == '__main__':
     cli()

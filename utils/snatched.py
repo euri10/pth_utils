@@ -4,7 +4,7 @@ from lxml import html
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
-logging.root.setLevel(level=logging.INFO)
+logging.root.setLevel(level=logging.DEBUG)
 
 
 def get_formats(torrent_group_id, session):
@@ -70,12 +70,16 @@ def get_upgradables_from_page(page, my_id, session):
         snatchedpage = html.fromstring(r.content)
 
     torrents = snatchedpage.xpath('//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/@href', namespaces={"re": "http://exslt.org/regular-expressions"})
+    logger.debug('{} items: {}'.format(len(torrents), torrents))
     levels = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[2]/following-sibling::text()[1]')
+    logger.debug('{} items: {}'.format(len(levels), levels))
     artists_id = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/@href')
+    logger.debug('{} items: {}'.format(len(artists_id), artists_id))
     artists_name = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/text()')
+    logger.debug('{} items: {}'.format(len(artists_name), artists_name))
 
     return torrents, levels, artists_id, artists_name
 
