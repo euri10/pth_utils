@@ -104,7 +104,7 @@ def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/text()')
     logger.debug('{} items: {}'.format(len(artists_name), artists_name))
 
-    if len(torrents) == len(levels) == len(artists_id) == len(artists_name):
+    if not (len(torrents) == len(levels) == len(artists_id) == len(artists_name)):
         logging.error('mmmmmm shit')
         logging.debug(anonymize(html.tostring(snatchedpage), auth, passkey, authkey))
     return torrents, levels, artists_id, artists_name
