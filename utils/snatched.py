@@ -1,6 +1,7 @@
 import time
 import logging
 from lxml import html
+import re
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -57,7 +58,26 @@ def subscribe_collage(my_auth, session, collage_id):
         logger.info('Subscription failed for collage {}'.format(collage_id))
 
 
-def get_upgradables_from_page(page, my_id, session):
+def anonymize(page, auth, passkey, authkey):
+
+    # pattern_auth = b'(auth=)(.*;)'
+    # pattern_passkey = b'(passkey=)(.*;)'
+    # pattern_authkey = b'(authkey=)(.*["|;])'
+    # pattern_upvote = b'onclick="UpVoteGroup\((.*)\)'
+    # pattern_downvote = b'onclick="DownVoteGroup\((.*)\)'
+    # pattern_unvote_group = b'onclick="UnvoteGroup\((.*)\)'
+    # ANON = {pattern_auth: b'\1AUTH', pattern_passkey: b'\1PASSKEY;', pattern_authkey:b'AUTHKEY;', pattern_upvote:b'AUTH', pattern_downvote:b'AUTH', pattern_unvote_group:b'AUTH'}
+
+    # for pattern, repl in ANON.items():
+    #     page = re.sub(pattern=pattern, repl=repl, string=page)
+    page = re.sub(auth.encode('utf-8'), b'AUTH', page)
+    page = re.sub(passkey.encode('utf-8'), b'PASSKEY', page)
+    page = re.sub(authkey.encode('utf-8'), b'AUTHKEY', page)
+    return page
+
+
+
+def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
     """On a snatched list page retrieve the torrents that could be upgraded
     from MP3 to FLAC """
     logger.debug('entering get_upgradables_from_page')
@@ -70,10 +90,10 @@ def get_upgradables_from_page(page, my_id, session):
         logger.info('getting page number')
         snatchedpage = html.fromstring(r.content)
 
-    torrents = snatchedpage.xpath('//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/@href', namespaces={"re": "http://exslt.org/regular-expressions"})
+    torrents = snatchedpage.xpath('//tr[@class="torrent torrent_row"]/t[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/@href', namespaces={"re": "http://exslt.org/regular-expressions"})
     logger.debug('{} items: {}'.format(len(torrents), torrents))
     if not len(torrents):
-        logger.debug(html.tostring(snatchedpage.xpath('//tr[@class="torrent torrent_row"]')[0]))
+        logger.debug(anonymize(html.tostring(snatchedpage), auth, passkey, authkey))
     levels = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[2]/following-sibling::text()[1]')
     logger.debug('{} items: {}'.format(len(levels), levels))

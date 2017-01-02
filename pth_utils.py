@@ -378,7 +378,7 @@ def displayer(ctx, outfile):
         displayables = []
         for page in pages:
             logger.info('getting page number {}'.format(page))
-            torrents, levels, artists_id, artists_name = get_upgradables_from_page(page, my_id, session)
+            torrents, levels, artists_id, artists_name = get_upgradables_from_page(page, my_id, session, auth, passkey, authkey)
             logger.debug('after get_upgradables_from_page')
             snatched = []
             for t in zip(torrents, levels, artists_id, artists_name):
