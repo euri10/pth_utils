@@ -90,7 +90,7 @@ def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
         logger.info('getting page number')
         snatchedpage = html.fromstring(r.content)
 
-    torrents = snatchedpage.xpath('//tr[@class="torrent torrent_row"]/t[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/@href', namespaces={"re": "http://exslt.org/regular-expressions"})
+    torrents = snatchedpage.xpath('//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/@href', namespaces={"re": "http://exslt.org/regular-expressions"})
     logger.debug('{} items: {}'.format(len(torrents), torrents))
     if not len(torrents):
         logger.debug(anonymize(html.tostring(snatchedpage), auth, passkey, authkey))
