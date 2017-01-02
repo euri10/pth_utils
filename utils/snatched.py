@@ -1,4 +1,5 @@
 import time
+import threading
 import logging
 from lxml import html
 import re
@@ -8,6 +9,34 @@ logging.basicConfig()
 logging.root.setLevel(level=logging.DEBUG)
 
 
+def rate_limited(max_per_second):
+    """
+    Decorator that make functions not be called faster than
+    """
+    lock = threading.Lock()
+    minInterval = 1.0 / float(max_per_second)
+
+    def decorate(func):
+        lastTimeCalled = [0.0]
+
+        def rateLimitedFunction(args, *kargs):
+            lock.acquire()
+            elapsed = time.clock() - lastTimeCalled[0]
+            leftToWait = minInterval - elapsed
+            if leftToWait > 0:
+                time.sleep(leftToWait)
+            lock.release()
+            ret = func(args, *kargs)
+            lastTimeCalled[0] = time.clock()
+            return ret
+
+        return rateLimitedFunction
+
+    return decorate
+
+
+# API use is limited to 5 requests within any 10-second window
+@rate_limited(0.5)
 def get_formats(torrent_group_id, session):
     """Get formats for a given torrent group, uses the API because it can !"""
     url = 'https://passtheheadphones.me/ajax.php'
@@ -15,14 +44,16 @@ def get_formats(torrent_group_id, session):
     logger.info('getting formats of {}'.format(torrent_group_id))
     # rate limit hit if too fast, awful hard-coding
     # TODO : better handling of rate limit, this one sucks but works
-    time.sleep(2)
     r = session.get(url, params=params)
+    logger.debug(r.json())
     return [r.json()['response']['torrents'][i]['format'] for i in
             range(len(r.json()['response']['torrents']))]
 
+
+@rate_limited(0.5)
 def get_display_infos(torrent_id, session):
     """Get formats for a given torrent id, uses the API because it can !"""
-    #ajax.php?action=torrent&id=<Torrent Id>
+    # ajax.php?action=torrent&id=<Torrent Id>
     url = 'https://passtheheadphones.me/ajax.php'
     params = {'action': 'torrent', 'id': torrent_id}
     logger.info('getting info for {}'.format(torrent_id))
@@ -59,22 +90,10 @@ def subscribe_collage(my_auth, session, collage_id):
 
 
 def anonymize(page, auth, passkey, authkey):
-
-    # pattern_auth = b'(auth=)(.*;)'
-    # pattern_passkey = b'(passkey=)(.*;)'
-    # pattern_authkey = b'(authkey=)(.*["|;])'
-    # pattern_upvote = b'onclick="UpVoteGroup\((.*)\)'
-    # pattern_downvote = b'onclick="DownVoteGroup\((.*)\)'
-    # pattern_unvote_group = b'onclick="UnvoteGroup\((.*)\)'
-    # ANON = {pattern_auth: b'\1AUTH', pattern_passkey: b'\1PASSKEY;', pattern_authkey:b'AUTHKEY;', pattern_upvote:b'AUTH', pattern_downvote:b'AUTH', pattern_unvote_group:b'AUTH'}
-
-    # for pattern, repl in ANON.items():
-    #     page = re.sub(pattern=pattern, repl=repl, string=page)
     page = re.sub(auth.encode('utf-8'), b'AUTH', page)
     page = re.sub(passkey.encode('utf-8'), b'PASSKEY', page)
     page = re.sub(authkey.encode('utf-8'), b'AUTHKEY', page)
     return page
-
 
 
 def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
@@ -90,12 +109,16 @@ def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
         logger.info('getting page number')
         snatchedpage = html.fromstring(r.content)
 
-    torrents = snatchedpage.xpath('//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/@href', namespaces={"re": "http://exslt.org/regular-expressions"})
+    torrents = snatchedpage.xpath(
+        '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/@href',
+        namespaces={"re": "http://exslt.org/regular-expressions"})
     logger.debug('{} items: {}'.format(len(torrents), torrents))
     if not len(torrents):
-        logger.debug(anonymize(html.tostring(snatchedpage), auth, passkey, authkey))
+        logger.debug(
+            anonymize(html.tostring(snatchedpage), auth, passkey, authkey))
     levels = snatchedpage.xpath(
-        '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/following-sibling::text()[1]', namespaces={"re": "http://exslt.org/regular-expressions"})
+        '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/following-sibling::text()[1]',
+        namespaces={"re": "http://exslt.org/regular-expressions"})
     logger.debug('{} items: {}'.format(len(levels), levels))
     artists_id = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/@href')
@@ -104,9 +127,9 @@ def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/text()')
     logger.debug('{} items: {}'.format(len(artists_name), artists_name))
 
-    if not (len(torrents) == len(levels) == len(artists_id) == len(artists_name)):
+    if not (len(torrents) == len(levels) == len(artists_id) == len(
+            artists_name)):
         logging.error('mmmmmm shit')
-        logging.debug(anonymize(html.tostring(snatchedpage), auth, passkey, authkey))
+        logging.debug(
+            anonymize(html.tostring(snatchedpage), auth, passkey, authkey))
     return torrents, levels, artists_id, artists_name
-
-

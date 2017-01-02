@@ -102,7 +102,7 @@ def checker(ctx, notify):
         already_upgraded = list(set(tgid_mp3) & set(tgid_flac))
         logger.info('Among your MP3s snatched, you got already {} upgraded'.format(len(already_upgraded)))
         snatched_mp3_upgradable = [mp3 for mp3 in snatched_mp3 if re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', mp3[0]).group(1) not in already_upgraded]
-        logger.info('Getting info on the {} upgradable MP3 you snatched'.format(
+        logger.info('Getting info on the {} upgradable MP3s you snatched'.format(
             len(snatched_mp3_upgradable)))
         for snatch in snatched_mp3_upgradable:
             logger.debug(snatch)
