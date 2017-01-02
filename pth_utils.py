@@ -19,7 +19,7 @@ from utils.snatched import get_upgradables_from_page, notify_artist, \
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
-logging.root.setLevel(level=logging.DEBUG)
+
 
 
 class PTH(object):
@@ -40,9 +40,14 @@ pass_pth = click.make_pass_decorator(PTH)
                   os.environ.get('PTH_PASSWORD', '')),
               help='Defaults to PTH_PASSWORD environment variable',
               hide_input=True)
+@click.option('--debug/--no_debug', default=False, help='Set to true to see debug logs on top of info')
 @click.pass_context
-def cli(ctx, pth_user, pth_password):
+def cli(ctx, pth_user, pth_password, debug):
     ctx.obj = PTH(pth_user, pth_password)
+    if debug:
+        logging.root.setLevel(level=logging.DEBUG)
+    else:
+        logging.root.setLevel(level=logging.INFO)
 
 
 @click.command(
@@ -374,6 +379,7 @@ def displayer(ctx, outfile):
         for page in pages:
             logger.info('getting page number {}'.format(page))
             torrents, levels, artists_id, artists_name = get_upgradables_from_page(page, my_id, session)
+            logger.debug('after get_upgradables_from_page')
             snatched = []
             for t in zip(torrents, levels, artists_id, artists_name):
                 snatched.append(t)

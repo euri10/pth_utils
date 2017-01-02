@@ -60,6 +60,7 @@ def subscribe_collage(my_auth, session, collage_id):
 def get_upgradables_from_page(page, my_id, session):
     """On a snatched list page retrieve the torrents that could be upgraded
     from MP3 to FLAC """
+    logger.debug('entering get_upgradables_from_page')
     snatched_url = 'https://passtheheadphones.me/torrents.php'
     params = {'page': page, 'type': 'snatched', 'userid': my_id}
     r = session.get(snatched_url, params=params)
