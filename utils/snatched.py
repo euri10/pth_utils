@@ -95,7 +95,7 @@ def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
     if not len(torrents):
         logger.debug(anonymize(html.tostring(snatchedpage), auth, passkey, authkey))
     levels = snatchedpage.xpath(
-        '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[2]/following-sibling::text()[1]')
+        '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[re:match(@href, "torrents\.php\?id=(\d+)&torrentid=(\d+)")]/following-sibling::text()[1]', namespaces={"re": "http://exslt.org/regular-expressions"})
     logger.debug('{} items: {}'.format(len(levels), levels))
     artists_id = snatchedpage.xpath(
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/@href')
@@ -104,6 +104,9 @@ def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
         '//tr[@class="torrent torrent_row"]/td[@class="big_info"]/div/a[1]/text()')
     logger.debug('{} items: {}'.format(len(artists_name), artists_name))
 
+    if len(torrents) == len(levels) == len(artists_id) == len(artists_name):
+        logging.error('mmmmmm shit')
+        logging.debug(anonymize(html.tostring(snatchedpage), auth, passkey, authkey))
     return torrents, levels, artists_id, artists_name
 
 

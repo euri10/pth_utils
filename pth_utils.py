@@ -69,7 +69,7 @@ def checker(ctx, notify):
     session.headers = headers
     if isinstance(ctx.pth_password, HiddenPassword):
         pth_password = ctx.pth_password.password
-    my_id, _, _, authkey = login(ctx.pth_user, pth_password, session)
+    my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
     # get the #  of pages, loops them to build upgradables list
     upgradables = []
     notifiables = []
@@ -87,7 +87,7 @@ def checker(ctx, notify):
         # yeah I know I could get page 1 info right away...
         for page in pages:
             logger.info('getting page number {}'.format(page))
-            torrents, levels, artists_id, artists_name = get_upgradables_from_page(page, my_id, session)
+            torrents, levels, artists_id, artists_name = get_upgradables_from_page(page, my_id, session, auth, passkey, authkey)
 
             #test
             upgradable = []
@@ -104,8 +104,6 @@ def checker(ctx, notify):
                     else:
                         if notify:
                             notifiable.append(snatch[3])
-
-            ##
             for u in upgradable:
                 upgradables.append(u)
             for n in set(notifiable):
@@ -393,6 +391,7 @@ def displayer(ctx, outfile):
         data = [{extract[i]: dis[v]} for i, v in enumerate(extract) for dis in displayables]
         with open(outfile, 'w') as output:
             json.dump(data, output)
+        logout(authkey=authkey, session=session)
 
 @click.command()
 @pass_pth
@@ -427,6 +426,7 @@ def mixer(ctx, mix_url):
         search_params = {'action': 'browse', 'filelist': stitle }
         rs = session.get(url=url, params=search_params)
         print(len(rs.json()['response']['results']))
+    logout(authkey=authkey, session=session)
 
 cli.add_command(checker)
 cli.add_command(grabber)
