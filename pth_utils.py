@@ -85,34 +85,36 @@ def checker(ctx, notify):
             len(snatchedpage.xpath('//div[@class="linkbox"][1]/a/@href'))))
         pages.add('1')
         # yeah I know I could get page 1 info right away...
+        snatched = []
         for page in pages:
             logger.info('getting page number {}'.format(page))
             torrents, levels, artists_id, artists_name = get_upgradables_from_page(page, my_id, session, auth, passkey, authkey)
-
-            #test
-            upgradable = []
-            notifiable = []
-            snatched = []
             for t in zip(torrents, levels, artists_id, artists_name):
                 snatched.append(t)
-            for snatch in snatched:
-                if re.match('.*MP3.*', snatch[1]):
-                    torrent_group_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(1)
-                    if 'FLAC' in get_formats(torrent_group_id, session):
-                        # TODO handle false positive
-                        upgradable.append(snatch[0])
-                    else:
-                        if notify:
-                            notifiable.append(snatch[3])
-            for u in upgradable:
-                upgradables.append(u)
-            for n in set(notifiable):
-                notifiables.append(n)
-
+        # making lists of snatched torrents by format, handling already upgraded stuff, more efficient than previous
+        logger.info('You snatched {} torrents'.format(len(snatched)))
+        snatched_mp3 = [s for s in snatched if re.match('.*MP3.*', s[1])]
+        logger.info('You snatched {} MP3s'.format(len(snatched_mp3)))
+        snatched_flac = [s for s in snatched if re.match('.*FLAC.*', s[1])]
+        logger.info('You snatched {} FLACs'.format(len(snatched_flac)))
+        tgid_mp3 = [re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', u[0]).group(1) for u in snatched_mp3]
+        tgid_flac = [re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', u[0]).group(1) for u in snatched_flac]
+        already_upgraded = list(set(tgid_mp3) & set(tgid_flac))
+        logger.info('Among your MP3s snatched, you got already {} upgraded'.format(len(already_upgraded)))
+        snatched_mp3_upgradable = [mp3 for mp3 in snatched_mp3 if re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', mp3[0]).group(1) not in already_upgraded]
+        logger.info('Getting info on the {} upgradable MP3 you snatched'.format(
+            len(snatched_mp3_upgradable)))
+        for snatch in snatched_mp3_upgradable:
+            logger.debug(snatch)
+            torrent_group_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(1)
+            if 'FLAC' in get_formats(torrent_group_id, session):
+                upgradables.append(snatch[0])
+            else:
+                if notify:
+                    notifiables.append(snatch[3])
     for upgradable in upgradables:
         logger.info(
             'You can get a better version on: {}'.format(BASE_URL + upgradable))
-
     notify_artist(authkey=authkey, session=session, artists_list=notifiables, notification_label='no flac but got mp3')
     logout(authkey=authkey, session=session)
 
