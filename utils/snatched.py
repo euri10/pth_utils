@@ -45,8 +45,10 @@ def get_formats(torrent_group_id, session):
     # rate limit hit if too fast, awful hard-coding
     # TODO : better handling of rate limit, this one sucks but works
     r = session.get(url, params=params)
-    logger.debug(r.json())
-    return [r.json()['response']['torrents'][i]['format'] for i in
+    if r.json()['status'] == 'failure':
+        logger.debug(r.json())
+    else:
+        return [r.json()['response']['torrents'][i]['format'] for i in
             range(len(r.json()['response']['torrents']))]
 
 
