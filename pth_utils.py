@@ -15,11 +15,10 @@ from utils.master import RELEASE_TYPE, FORMAT, MEDIA, COLLAGE_CATEGORY, \
     LFM_PERIODS
 from utils.size import sizeof_fmt
 from utils.snatched import get_upgradables_from_page, notify_artist, \
-    subscribe_collage, get_formats, get_display_infos
+    subscribe_collage, get_formats, get_display_infos, send_request
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
-
 
 
 class PTH(object):
@@ -27,7 +26,9 @@ class PTH(object):
         self.pth_user = pth_user
         self.pth_password = pth_password
 
+
 pass_pth = click.make_pass_decorator(PTH)
+
 
 @click.group()
 @click.option('--pth_user',
@@ -40,7 +41,8 @@ pass_pth = click.make_pass_decorator(PTH)
                   os.environ.get('PTH_PASSWORD', '')),
               help='Defaults to PTH_PASSWORD environment variable',
               hide_input=True)
-@click.option('--debug/--no_debug', default=False, help='Set to true to see debug logs on top of info')
+@click.option('--debug/--no_debug', default=False,
+              help='Set to true to see debug logs on top of info')
 @click.pass_context
 def cli(ctx, pth_user, pth_password, debug):
     ctx.obj = PTH(pth_user, pth_password)
@@ -59,7 +61,8 @@ def cli(ctx, pth_user, pth_password, debug):
               help='Set to True to set up a notification for new FLAC for the '
                    'artists where you got an MP3 and no FLAC is available yet, '
                    'would be amazing to be able to do that per torrent group !')
-def checker(ctx, notify):
+@click.option('--make_request/--no__makerequest', prompt=True, default=True, help='Set to True to request a FLAC')
+def checker(ctx, notify, make_request):
     """
     Builds a list of snatched MP3s that have a FLAC.
     You can set up notifications for artists where there is NO FLAC and you snatched the MP3
@@ -73,6 +76,7 @@ def checker(ctx, notify):
     # get the #  of pages, loops them to build upgradables list
     upgradables = []
     notifiables = []
+    requests_list = []
     snatched_url = 'https://passtheheadphones.me/torrents.php'
     params = {'page': 1, 'type': 'snatched', 'userid': my_id}
     r = session.get(snatched_url, params=params)
@@ -88,7 +92,8 @@ def checker(ctx, notify):
         snatched = []
         for page in pages:
             logger.info('getting page number {}'.format(page))
-            torrents, levels, artists_id, artists_name = get_upgradables_from_page(page, my_id, session, auth, passkey, authkey)
+            torrents, levels, artists_id, artists_name = get_upgradables_from_page(
+                page, my_id, session, auth, passkey, authkey)
             for t in zip(torrents, levels, artists_id, artists_name):
                 snatched.append(t)
         # making lists of snatched torrents by format, handling already upgraded stuff, more efficient than previous
@@ -97,13 +102,22 @@ def checker(ctx, notify):
         logger.info('You snatched {} MP3s'.format(len(snatched_mp3)))
         snatched_flac = [s for s in snatched if re.match('.*FLAC.*', s[1])]
         logger.info('You snatched {} FLACs'.format(len(snatched_flac)))
-        tgid_mp3 = [re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', u[0]).group(1) for u in snatched_mp3]
-        tgid_flac = [re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', u[0]).group(1) for u in snatched_flac]
+        tgid_mp3 = [
+            re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', u[0]).group(1)
+            for u in snatched_mp3]
+        tgid_flac = [
+            re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', u[0]).group(1)
+            for u in snatched_flac]
         already_upgraded = list(set(tgid_mp3) & set(tgid_flac))
-        logger.info('Among your MP3s snatched, you got already {} upgraded'.format(len(already_upgraded)))
-        snatched_mp3_upgradable = [mp3 for mp3 in snatched_mp3 if re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', mp3[0]).group(1) not in already_upgraded]
-        logger.info('Getting info on the {} upgradable MP3s you snatched'.format(
-            len(snatched_mp3_upgradable)))
+        logger.info(
+            'Among your MP3s snatched, you got already {} upgraded'.format(
+                len(already_upgraded)))
+        snatched_mp3_upgradable = [mp3 for mp3 in snatched_mp3 if re.match(
+            'torrents\.php\?id=(\d+)&torrentid=(\d+)', mp3[0]).group(
+            1) not in already_upgraded]
+        logger.info(
+            'Getting info on the {} upgradable MP3s you snatched'.format(
+                len(snatched_mp3_upgradable)))
         for snatch in snatched_mp3_upgradable:
             logger.debug(snatch)
             torrent_group_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(1)
@@ -112,10 +126,13 @@ def checker(ctx, notify):
             else:
                 if notify:
                     notifiables.append(snatch[3])
+                if make_request:
+                    #https://passtheheadphones.me/requests.php?action=new&groupid=269034
+                    send_request(authkey, session, torrent_group_id, my_id)
     for upgradable in upgradables:
-        logger.info(
-            'You can get a better version on: {}'.format(BASE_URL + upgradable))
-    notify_artist(authkey=authkey, session=session, artists_list=notifiables, notification_label='no flac but got mp3')
+        logger.info('You can get a better version on: {}'.format(BASE_URL + upgradable))
+    notify_artist(authkey=authkey, session=session, artists_list=notifiables,
+                  notification_label='no flac but got mp3')
     logout(authkey=authkey, session=session)
 
 
@@ -129,7 +146,8 @@ def checker(ctx, notify):
 @click.option('--formats', '-f', type=click.Choice(FORMAT), multiple=True)
 @click.option('--medias', '-m', type=click.Choice(MEDIA), multiple=True,
               help='If nothing is specified, all medias are taken')
-@click.option('--output', '-o', prompt=True, type=click.Path(exists=True, file_okay=False),
+@click.option('--output', '-o', prompt=True,
+              type=click.Path(exists=True, file_okay=False),
               default=os.path.join(os.environ.get('HOME', ''), 'Downloads'),
               help='Defaults to HOME/Downloads environment variable')
 def grabber(ctx, artists, collages, releases, formats,
@@ -324,6 +342,7 @@ def collage_notify(ctx, search, tags, tags_type, categories,
             subscribe_collage(authkey, session, ctn)
         logout(authkey=authkey, session=session)
 
+
 @click.command(short_help='Subscribe to top artists of you lastfm user')
 @pass_pth
 @click.option('--lastfm_api_key',
@@ -343,16 +362,21 @@ def lfm_subscriber(ctx, lastfm_api_key, lfm_user, period):
         pth_password = ctx.pth_password.password
     my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
     lfm_url = 'http://ws.audioscrobbler.com/2.0/?'
-    lfm_params = {'method': 'user.gettopartists', 'user': lfm_user, 'period': period,
+    lfm_params = {'method': 'user.gettopartists', 'user': lfm_user,
+                  'period': period,
                   'api_key': lastfm_api_key, 'format': 'json'}
     lfm_r = requests.get(lfm_url, params=lfm_params, )
     if lfm_r.status_code == 200:
-        lfm_top_artists= [lfm_r.json()['topartists']['artist'][i]['name'] for i in range(len(lfm_r.json()['topartists']['artist']))]
-        notify_artist(authkey=authkey, session=session, artists_list=lfm_top_artists, notification_label='top lastfm artists')
+        lfm_top_artists = [lfm_r.json()['topartists']['artist'][i]['name'] for i
+                           in range(len(lfm_r.json()['topartists']['artist']))]
+        notify_artist(authkey=authkey, session=session,
+                      artists_list=lfm_top_artists,
+                      notification_label='top lastfm artists')
 
 
 @click.command(short_help='Displays info of your snatched torrents')
-@click.option('--outfile', '-o', type=click.Path(), default='snatched_info.json')
+@click.option('--outfile', '-o', type=click.Path(),
+              default='snatched_info.json')
 @pass_pth
 def displayer(ctx, outfile):
     """Displays info of your snatched torrents"""
@@ -378,29 +402,34 @@ def displayer(ctx, outfile):
         displayables = []
         for page in pages:
             logger.info('getting page number {}'.format(page))
-            torrents, levels, artists_id, artists_name = get_upgradables_from_page(page, my_id, session, auth, passkey, authkey)
+            torrents, levels, artists_id, artists_name = get_upgradables_from_page(
+                page, my_id, session, auth, passkey, authkey)
             logger.debug('after get_upgradables_from_page')
             snatched = []
             for t in zip(torrents, levels, artists_id, artists_name):
                 snatched.append(t)
             for snatch in snatched:
                 logger.info(snatch)
-                torrent_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(2)
+                torrent_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)',
+                                      snatch[0]).group(2)
                 info = get_display_infos(torrent_id, session)
                 displayables.append(info)
         logger.info('Here\'s an attempt at giving you your snatched info')
         extract = ['id', 'recordLabel', 'catalogueNumber']
-        data = [{extract[i]: dis[v]} for i, v in enumerate(extract) for dis in displayables]
+        data = [{extract[i]: dis[v]} for i, v in enumerate(extract) for dis in
+                displayables]
         with open(outfile, 'w') as output:
             json.dump(data, output)
         logout(authkey=authkey, session=session)
 
+
 @click.command()
 @pass_pth
-@click.option('--mix_url','-m', help='Beatport mix url')
+@click.option('--mix_url', '-m', help='Beatport mix url')
 def mixer(ctx, mix_url):
-    headers_beatport = {'Host': 'mixes.beatport.com', 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0', 'Referer': 'http://mixes.beatport.com/'}
-# X-Requested-With: XMLHttpRequest
+    headers_beatport = {'Host': 'mixes.beatport.com',
+                        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:51.0) Gecko/20100101 Firefox/51.0',
+                        'Referer': 'http://mixes.beatport.com/'}
     session_bp = requests.session()
     session_bp.headers = headers_beatport
     mix_url = 'http://mixes.beatport.com/mix/chillout-deep-house-tropical-beach-mix/129388'
@@ -409,7 +438,7 @@ def mixer(ctx, mix_url):
     mixpage = html.fromstring(r.content)
     titles = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[5]/a/text()')
     titles_links = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[5]/a/@href')
-    labels_links =mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[7]/a/@href')
+    labels_links = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[7]/a/@href')
     print(r)
 
     session = requests.Session()
@@ -420,15 +449,16 @@ def mixer(ctx, mix_url):
 
     url = 'https://passtheheadphones.me/ajax.php'
     for title in titles:
-        #remove remix / original mix stuff
+        # remove remix / original mix stuff
         if re.match('(.*) (\(.*\))', title) is not None:
             stitle = re.match('(.*) (\(.*\))', title).group(1)
         else:
             stitle = title
-        search_params = {'action': 'browse', 'filelist': stitle }
+        search_params = {'action': 'browse', 'filelist': stitle}
         rs = session.get(url=url, params=search_params)
         print(len(rs.json()['response']['results']))
     logout(authkey=authkey, session=session)
+
 
 cli.add_command(checker)
 cli.add_command(grabber)

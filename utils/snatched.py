@@ -1,6 +1,8 @@
 import time
 import threading
 import logging
+
+import click
 from lxml import html
 import re
 
@@ -49,7 +51,7 @@ def get_formats(torrent_group_id, session):
         logger.debug(r.json())
     else:
         return [r.json()['response']['torrents'][i]['format'] for i in
-            range(len(r.json()['response']['torrents']))]
+                range(len(r.json()['response']['torrents']))]
 
 
 @rate_limited(0.5)
@@ -77,6 +79,64 @@ def notify_artist(authkey, session, artists_list, notification_label):
         logger.info('Notification set for artists {}'.format(artists_list))
     else:
         logger.error('notify failed ? artists {}'.format(artists_list))
+
+
+def send_request(authkey, session, torrent_group_id, my_id):
+
+    #checking torrent page to see if there's a request already
+    url_torrent = 'https://passtheheadphones.me/torrents.php'
+    params_torrent = {'id': torrent_group_id}
+    rt = session.get(url=url_torrent, params=params_torrent)
+    torrent_page = html.fromstring(rt.content)
+    if len(torrent_page.xpath('//div[@class="box"]/div[@class="head"]/span/text()')):
+        if 'Requests' in torrent_page.xpath('//div[@class="box"]/div[@class="head"]/span/text()')[0]:
+            existing_requests = torrent_page.xpath('//table[@id="requests"]/tr[contains(@class,"requestrows")]/td[1]/a/@href')
+            for er in existing_requests:
+                rid = re.match('requests\.php\?action=view&id=(\d+)', er).group(1)
+                url = 'https://passtheheadphones.me/ajax.php'
+                params_req = {'action':'request', 'id': rid}
+                rreq = session.get(url, params=params_req)
+                if rreq.json()['response']['requestorId'] == int(my_id):
+                    logger.debug('Request already done on {}'.format(torrent_group_id))
+                    return None
+    logger.debug('Request make on {}'.format(torrent_group_id))
+    url = 'https://passtheheadphones.me/requests.php'
+    params = {'action': 'new', 'groupid': torrent_group_id}
+    r = session.get(url=url, params=params)
+    req_page = html.fromstring(r.content)
+
+    print(req_page.xpath('//div[@class="box"]/div[@class="head"]/span/text()'))
+
+    data = [(s.attrib['name'], s.attrib['value']) for s in
+            req_page.xpath('//form[@id="request_form"]//input') if
+            ('value' in s.attrib.keys() and 'name' in s.attrib.keys())]
+
+    #remove formats, media, bitrates and amount then replace with what we want, FLAC, all medias, all release type, 100MB request
+    data2 = [(i, v) for i, v in data if i not in ['formats[]', 'media[]', 'bitrates[]', 'amount']]
+    data2.append(('formats[]', 1))
+    data2.append(('all_bitrates', 'on'))
+    data2.append(('all_media', 'on'))
+    data2.append(('amount', 104857600))
+
+    data2.append(('description', 'requested with pth_utils checker @ https://github.com/euri10/pth_utils'))
+    data2.append(('unit', 'mb'))
+    data2.append(('type', 'Music'))
+    data2.append(('releasetype', (req_page.cssselect('#releasetype > option:checked')[0].attrib['value'])))
+    for s in req_page.cssselect('#importance > option:checked'):
+        data2.append(('importance[]', s.attrib['value']))
+
+    if click.confirm('Do you want to continue request on {}?'.format(torrent_group_id)):
+        r2 = session.post(url=url, data=data2)
+        preq_page = html.fromstring(r2.content)
+        if len(preq_page.xpath('//div[@class="box pad"]/p/text()')):
+            logger.debug('we hit a request error')
+            logger.debug(preq_page.xpath('//div[@class="box pad"]/p/text()')[0])
+        else:
+            logger.info('request done on {}'.format(torrent_group_id))
+    else:
+        logger.debug('no request made on {}'.format(torrent_group_id))
+        return None
+
 
 
 def subscribe_collage(my_auth, session, collage_id):
