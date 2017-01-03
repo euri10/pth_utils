@@ -61,7 +61,7 @@ def cli(ctx, pth_user, pth_password, debug):
               help='Set to True to set up a notification for new FLAC for the '
                    'artists where you got an MP3 and no FLAC is available yet, '
                    'would be amazing to be able to do that per torrent group !')
-@click.option('--make_request/--no__makerequest', prompt=True, default=True, help='Set to True to request a FLAC')
+@click.option('--make_request/--no_make_request', prompt=True, default=False, help='Set to True to request a FLAC')
 def checker(ctx, notify, make_request):
     """
     Builds a list of snatched MP3s that have a FLAC.
