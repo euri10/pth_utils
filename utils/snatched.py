@@ -80,7 +80,7 @@ def notify_artist(authkey, session, artists_list, notification_label):
     else:
         logger.error('notify failed ? artists {}'.format(artists_list))
 
-
+@rate_limited(0.5)
 def send_request(authkey, session, torrent_group_id, my_id):
 
     #checking torrent page to see if there's a request already
@@ -96,9 +96,12 @@ def send_request(authkey, session, torrent_group_id, my_id):
                 url = 'https://passtheheadphones.me/ajax.php'
                 params_req = {'action':'request', 'id': rid}
                 rreq = session.get(url, params=params_req)
-                if rreq.json()['response']['requestorId'] == int(my_id):
-                    logger.debug('Request already done on {}'.format(torrent_group_id))
-                    return None
+                if rreq.json()['status'] == 'failure':
+                    logger.debug(rreq.json())
+                else:
+                    if rreq.json()['response']['requestorId'] == int(my_id):
+                        logger.debug('Request already done on {}'.format(torrent_group_id))
+                        return None
     logger.debug('Request make on {}'.format(torrent_group_id))
     url = 'https://passtheheadphones.me/requests.php'
     params = {'action': 'new', 'groupid': torrent_group_id}
