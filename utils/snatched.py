@@ -105,7 +105,7 @@ def send_request(authkey, session, torrent_group_id, my_id):
     r = session.get(url=url, params=params)
     req_page = html.fromstring(r.content)
 
-    print(req_page.xpath('//div[@class="box"]/div[@class="head"]/span/text()'))
+    logger.debug(req_page.xpath('//div[@class="box"]/div[@class="head"]/span/text()'))
 
     data = [(s.attrib['name'], s.attrib['value']) for s in
             req_page.xpath('//form[@id="request_form"]//input') if
