@@ -1,11 +1,14 @@
 import json
 import os
 import re
+from difflib import SequenceMatcher
 
 import click
 import logging
 import requests
 from lxml import html
+
+from apiclient.discovery import build
 
 from utils.get_torrent import get_torrent
 from utils.hidden_password import HiddenPassword
@@ -15,7 +18,8 @@ from utils.master import RELEASE_TYPE, FORMAT, MEDIA, COLLAGE_CATEGORY, \
     LFM_PERIODS
 from utils.size import sizeof_fmt
 from utils.snatched import get_upgradables_from_page, notify_artist, \
-    subscribe_collage, get_formats, get_display_infos, send_request
+    subscribe_collage, get_formats, get_display_infos, send_request, catlookup, \
+    artistlookup
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -61,7 +65,8 @@ def cli(ctx, pth_user, pth_password, debug):
               help='Set to True to set up a notification for new FLAC for the '
                    'artists where you got an MP3 and no FLAC is available yet, '
                    'would be amazing to be able to do that per torrent group !')
-@click.option('--make_request/--no_make_request', prompt=True, default=False, help='Set to True to request a FLAC')
+@click.option('--make_request/--no_make_request', prompt=True, default=False,
+              help='Set to True to request a FLAC')
 def checker(ctx, notify, make_request):
     """
     Builds a list of snatched MP3s that have a FLAC.
@@ -120,17 +125,19 @@ def checker(ctx, notify, make_request):
                 len(snatched_mp3_upgradable)))
         for snatch in snatched_mp3_upgradable:
             logger.debug(snatch)
-            torrent_group_id = re.match('torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(1)
+            torrent_group_id = re.match(
+                'torrents\.php\?id=(\d+)&torrentid=(\d+)', snatch[0]).group(1)
             if 'FLAC' in get_formats(torrent_group_id, session):
                 upgradables.append(snatch[0])
             else:
                 if notify:
                     notifiables.append(snatch[3])
                 if make_request:
-                    #https://passtheheadphones.me/requests.php?action=new&groupid=269034
+                    # https://passtheheadphones.me/requests.php?action=new&groupid=269034
                     send_request(authkey, session, torrent_group_id, my_id)
     for upgradable in upgradables:
-        logger.info('You can get a better version on: {}'.format(BASE_URL + upgradable))
+        logger.info(
+            'You can get a better version on: {}'.format(BASE_URL + upgradable))
     notify_artist(authkey=authkey, session=session, artists_list=notifiables,
                   notification_label='no flac but got mp3')
     logout(authkey=authkey, session=session)
@@ -460,6 +467,106 @@ def mixer(ctx, mix_url):
     logout(authkey=authkey, session=session)
 
 
+@click.command()
+@pass_pth
+@click.option('--youtube_playlist_id', '-y', help='youtube playlist url')
+@click.option('--youtube_api_key',
+              default=lambda: os.environ.get('YOUTUBE_API_KEY', ''),
+              help='Defaults to PTH_PASSWORD environment variable',
+              hide_input=True)
+def yt_playlist(ctx, youtube_playlist_id, youtube_api_key):
+    # log into pth, gets the id
+    session = requests.Session()
+    session.headers = headers
+    if isinstance(ctx.pth_password, HiddenPassword):
+        pth_password = ctx.pth_password.password
+    my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
+
+    # youtube get items of playlist
+    youtube_playlist_id = 'PLMC9KNkIncKtGvr2kFRuXBVmBev6cAJ2u'
+    youtube = build('youtube', 'v3', developerKey=youtube_api_key)
+    playlist = youtube.playlistItems().list(
+        part='contentDetails,id,snippet,status',
+        playlistId='PLMC9KNkIncKtGvr2kFRuXBVmBev6cAJ2u'
+    ).execute()
+    titles = [playlist['items'][p]['snippet']['title'] for p in
+              range(len(playlist['items']))]
+    # remove stuff inside parenthesis
+    ctitles = []
+    for t in titles:
+        ctitles.append(re.sub('\s*\([^\)]*\)\s*', '', t))
+
+    url = 'https://passtheheadphones.me/ajax.php'
+    for ct in ctitles:
+        params = {'action': 'browse', 'searchstr': ct}
+        r = session.get(url, params=params)
+        logger.debug(r.json())
+        logger.debug(len(r.json()['response']['results']))
+
+
+@click.command()
+@pass_pth
+@click.option('--month_number', '-m')
+@click.option('--year_number', '-y')
+def ra(ctx, month_number, year_number):
+    # log into pth, gets the id
+    session = requests.Session()
+    session.headers = headers
+    if isinstance(ctx.pth_password, HiddenPassword):
+        pth_password = ctx.pth_password.password
+    my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
+
+    url_ra = 'https://www.residentadvisor.net/dj-charts.aspx'
+    params_ra = {'top':50, 'mn': month_number, 'yr': year_number}
+    req_ra = requests.get(url=url_ra, params=params_ra)
+    if not req_ra.status_code == 200:
+        logger.debug('RA request failed')
+    else:
+        chartpage = html.fromstring(req_ra.content)
+        artist_links = chartpage.xpath('//table[@id="tracks"]/tr/td[3]')
+        if len(artist_links ) != 50:
+            logger.debug('error not 50 found')
+        song_links = chartpage.xpath('//table[@id="tracks"]/tr/td[4]')
+        if len(song_links ) != 50:
+            logger.debug('error not 50 found')
+        catalogs = chartpage.xpath('//table[@id="tracks"]/tr/td[5]')
+        ra_items = []
+        for i in zip(artist_links, song_links, catalogs):
+            artist = i[0].xpath('a/text()')[0]
+            song = ' '.join(i[1].xpath('a/text() | text()'))
+            print(song)
+            if len(i[2].xpath('div/text()')):
+                cat_number = i[2].xpath('div/text()')[0]
+            else:
+                cat_number = None
+            ra_items.append((artist, song, cat_number))
+        if len(ra_items) != 50:
+            logger.debug('error not 50 found')
+
+
+        dl_list = []
+        #ra_items = [('Adam Beyer vs Dense & Pika', 'Going Down (Original Mix)', 'DC166')]
+        # ra_items = [('Mike Parker & Donato Dozzy', 'Opalesce', None)]
+        for (a, s, c) in ra_items:
+            logger.info('>>>> a:{} s:{} c:{} <<<<'.format(a, s, c))
+            if c is not None:
+                match = catlookup(c, session)
+                if match is None:
+                    pm = artistlookup(a, s, session)
+                    if pm is not None:
+                        for p in pm:
+                            logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artists'][0]['name'], p['groupName']))
+                else:
+                    for m in match:
+                        logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(m['groupId'], m['artist'], m['groupName']))
+            else:
+                pm = artistlookup(a, s, session)
+                if pm is not None:
+                    for p in pm:
+                        logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artists'][0]['name'], p['groupName']))
+
+
+
 cli.add_command(checker)
 cli.add_command(grabber)
 cli.add_command(similar)
@@ -467,6 +574,8 @@ cli.add_command(collage_notify)
 cli.add_command(lfm_subscriber)
 cli.add_command(displayer)
 cli.add_command(mixer)
+cli.add_command(yt_playlist)
+cli.add_command(ra)
 
 if __name__ == '__main__':
     cli()

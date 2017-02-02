@@ -1,6 +1,7 @@
 import time
 import threading
 import logging
+from difflib import SequenceMatcher
 
 import click
 from lxml import html
@@ -198,3 +199,40 @@ def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
         logging.debug(
             anonymize(html.tostring(snatchedpage), auth, passkey, authkey))
     return torrents, levels, artists_id, artists_name
+
+@rate_limited(0.5)
+def catlookup(c, session):
+    url_ajax = 'https://passtheheadphones.me/ajax.php'
+    params = {'action': 'browse', 'cataloguenumber': c}
+    r = session.get(url_ajax, params=params)
+    if not r.status_code == 200:
+        logger.debug('issue with artist')
+    else:
+        # https://passtheheadphones.me/torrents.php?id=341755
+        logger.debug(r.json())
+        results = r.json()['response']['results']
+        if len(results):
+            tgt = [results[i] for i in range(len(results))]
+            return tgt
+        else:
+            return None
+
+@rate_limited(0.5)
+def artistlookup(a, s, session):
+    pm = []
+    url_ajax = 'https://passtheheadphones.me/ajax.php'
+    params = {'action': 'artist', 'artistname': a}
+    r = session.get(url_ajax, params=params)
+    if not r.status_code == 200:
+        logger.debug('issue with artist')
+    if r.json()['status'] == 'success':
+        groups = [r.json()['response']['torrentgroup'][i] for i in range(len(r.json()['response']['torrentgroup']))]
+        for g in groups:
+            dist = SequenceMatcher(None, s, g['groupName']).ratio()
+            logger.debug('distance: {}'.format(dist))
+            if dist > 0.8:
+                pm.append(g)
+        return pm
+    else:
+        logger.debug('ajax call failure for {} | {}'.format(a, s))
+        return None

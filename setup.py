@@ -5,7 +5,7 @@ setup(
     version='0.1',
     py_modules=['pth_utils'],
     install_requires=[
-        'Click', 'requests', 'lxml', 'requests_oauthlib', 'cssselect'
+        'Click', 'requests', 'lxml', 'requests_oauthlib', 'cssselect', 'google-api-python-client-py3'
     ],
     entry_points='''
         [console_scripts]
