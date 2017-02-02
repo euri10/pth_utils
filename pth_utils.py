@@ -19,7 +19,7 @@ from utils.master import RELEASE_TYPE, FORMAT, MEDIA, COLLAGE_CATEGORY, \
 from utils.size import sizeof_fmt
 from utils.snatched import get_upgradables_from_page, notify_artist, \
     subscribe_collage, get_formats, get_display_infos, send_request, catlookup, \
-    artistlookup
+    artistlookup, filename
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -504,6 +504,16 @@ def yt_playlist(ctx, youtube_playlist_id, youtube_api_key):
         logger.debug(len(r.json()['response']['results']))
 
 
+def by_artist(a, s, session):
+    pm = artistlookup(a, s, session)
+    if pm is not None:
+        return pm, 1
+    else:
+        bfn = filename(a, s, session)
+        if bfn is not None:
+            return bfn, 2
+
+
 @click.command()
 @pass_pth
 @click.option('--month_number', '-m')
@@ -545,27 +555,46 @@ def ra(ctx, month_number, year_number):
 
 
         dl_list = []
-        #ra_items = [('Adam Beyer vs Dense & Pika', 'Going Down (Original Mix)', 'DC166')]
+        # ra_items = [('Adam Beyer vs Dense & Pika', 'Going Down (Original Mix)', 'DC166')]
         # ra_items = [('Mike Parker & Donato Dozzy', 'Opalesce', None)]
-        for (a, s, c) in ra_items:
-            logger.info('>>>> a:{} s:{} c:{} <<<<'.format(a, s, c))
+        # ra_items = [('Isolee', 'Pisco', None)]
+        #loop through songs
+        for i, (a, s, c) in enumerate(ra_items):
+            logger.info('{}|{}|{}|{}'.format(i+1, a, s, c))
+            # look by catalog number 1st
             if c is not None:
                 match = catlookup(c, session)
+                 # no cat number found, then look by artist name
                 if match is None:
-                    pm = artistlookup(a, s, session)
-                    if pm is not None:
-                        for p in pm:
+                    ba, ttt = by_artist(a, s, session)
+                    if ttt == 1:
+                        for p in ba:
                             logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artists'][0]['name'], p['groupName']))
+                    elif ttt == 2:
+                        for p in ba:
+                            logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artist'], p['groupName']))
                 else:
-                    for m in match:
-                        logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(m['groupId'], m['artist'], m['groupName']))
+                    # this is in case catalog number matches sonething but there's way too much distance beween
+                    # the searched artist and what is found ex: [('DJ Koze', 'Driven', 'HT02')] would have matched another ht02 cat number
+                    if SequenceMatcher(None, match[0]['artist'], a).ratio() < 0.9:
+                        ba, ttt = by_artist(a, s, session)
+                        if ttt == 1:
+                            for p in ba:
+                                logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artists'][0]['name'],p['groupName']))
+                        elif ttt == 2:
+                            for p in ba:
+                                logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artist'],p['groupName']))
+                    else:
+                        for m in match:
+                            logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(m['groupId'], m['artist'], m['groupName']))
             else:
-                pm = artistlookup(a, s, session)
-                if pm is not None:
-                    for p in pm:
+                ba, ttt = by_artist(a, s, session)
+                if ttt ==1:
+                    for p in ba:
                         logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artists'][0]['name'], p['groupName']))
-
-
+                elif ttt == 2:
+                    for p in ba:
+                        logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artist'], p['groupName']))
 
 cli.add_command(checker)
 cli.add_command(grabber)

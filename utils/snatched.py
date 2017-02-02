@@ -232,6 +232,26 @@ def artistlookup(a, s, session):
             logger.debug('distance: {}'.format(dist))
             if dist > 0.8:
                 pm.append(g)
+        if len(pm):
+            return pm
+        else:
+            return None
+    else:
+        logger.debug('ajax call failure for {} | {}'.format(a, s))
+        return None
+
+
+@rate_limited(0.5)
+def filename(a,s, session):
+    pm = []
+    url_ajax = 'https://passtheheadphones.me/ajax.php'
+    params = {'action': 'browse', 'artistname': a, 'filelist': s}
+    r = session.get(url_ajax, params=params)
+    if not r.status_code == 200:
+        logger.debug('issue with artist')
+    if r.json()['status'] == 'success':
+        for t in r.json()['response']['results']:
+            pm.append(t)
         return pm
     else:
         logger.debug('ajax call failure for {} | {}'.format(a, s))
