@@ -544,7 +544,6 @@ def ra(ctx, month_number, year_number):
         for i in zip(artist_links, song_links, catalogs):
             artist = i[0].xpath('a/text()')[0]
             song = ' '.join(i[1].xpath('a/text() | text()'))
-            print(song)
             if len(i[2].xpath('div/text()')):
                 cat_number = i[2].xpath('div/text()')[0]
             else:
@@ -555,16 +554,33 @@ def ra(ctx, month_number, year_number):
 
 
         dl_list = []
-        # ra_items = [('Adam Beyer vs Dense & Pika', 'Going Down (Original Mix)', 'DC166')]
-        # ra_items = [('Mike Parker & Donato Dozzy', 'Opalesce', None)]
-        # ra_items = [('Isolee', 'Pisco', None)]
-        #loop through songs
+        # ra_items = [('Adam Beyer vs Dense & Pika', 'Going Down (Original Mix)', 'DC166')] SOLVED
+        # ra_items = [('Mike Parker & Donato Dozzy', 'Opalesce', None)] SOLVED
+        # ra_items = [('Isolee', 'Pisco', None)] SOLVED
+        # ra_items = [('Nick Monaco', 'Half Naked (Adam Port Free Wifi remix)', 'CLR013')] SOLVED
+        # ra_items = [('Leiras', 'Abyssal (James Ruskin Remix)', 'FRACT006')] should find, remove () stuff???
+        # ra_items = [('Mike Parker & Donato Dozzy', 'Opalesce',None)] #issue ???
+        # ra_items = [('Architectural', 'Cubismo 8.3', 'ARCH 008')] # can_cat_reverse solves
+        #
+        # loop through songs
         for i, (a, s, c) in enumerate(ra_items):
             logger.info('{}|{}|{}|{}'.format(i+1, a, s, c))
             # look by catalog number 1st
             if c is not None:
                 match = catlookup(c, session)
-                 # no cat number found, then look by artist name
+                # trying cat number another way [('Nick Monaco', 'Half Naked (Adam Port Free Wifi remix)', 'CLR013')]
+                if match is None:
+                    pattern_catalog = '([a-zA-Z]+)([0-9]+)'
+                    pattern_catalog_reverse = '([a-zA-Z]+) ([0-9]+)'
+                    can_cat = re.match(pattern_catalog, c)
+                    can_cat_reverse = re.match(pattern_catalog_reverse, c)
+                    if can_cat is not None:
+                        c_again = can_cat.group(1) + ' ' + can_cat.group(2)
+                        match = catlookup(c_again, session)
+                    elif can_cat_reverse is not None:
+                        c_again = can_cat_reverse.group(1) + can_cat_reverse.group(2)
+                        match = catlookup(c_again, session)
+                    # no cat number found, then look by artist name
                 if match is None:
                     ba, ttt = by_artist(a, s, session)
                     if ttt == 1:

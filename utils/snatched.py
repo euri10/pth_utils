@@ -229,7 +229,7 @@ def artistlookup(a, s, session):
         groups = [r.json()['response']['torrentgroup'][i] for i in range(len(r.json()['response']['torrentgroup']))]
         for g in groups:
             dist = SequenceMatcher(None, s, g['groupName']).ratio()
-            logger.debug('distance: {}'.format(dist))
+            logger.debug('{} | distance: {}'.format(g['groupName'], dist))
             if dist > 0.8:
                 pm.append(g)
         if len(pm):
