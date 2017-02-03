@@ -446,7 +446,7 @@ def mixer(ctx, mix_url):
     titles = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[5]/a/text()')
     titles_links = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[5]/a/@href')
     labels_links = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[7]/a/@href')
-    print(r)
+    logger.info(r)
 
     session = requests.Session()
     session.headers = headers
@@ -463,7 +463,7 @@ def mixer(ctx, mix_url):
             stitle = title
         search_params = {'action': 'browse', 'filelist': stitle}
         rs = session.get(url=url, params=search_params)
-        print(len(rs.json()['response']['results']))
+        logger.info(len(rs.json()['response']['results']))
     logout(authkey=authkey, session=session)
 
 
@@ -514,6 +514,46 @@ def by_artist(a, s, session):
             return bfn, 2
 
 
+def catalgo(a, s, c, session):
+    found = []
+    pattern_variations = ['([a-zA-Z]+)([0-9]+)', '([a-zA-Z]+) ([0-9]+)']
+    cat_variations = [c]
+    for i, pat in enumerate(pattern_variations):
+        can = re.match(pat, c)
+        if can is not None:
+            if i == 0:
+                cat_variations.append(can.group(1) + ' ' + can.group(2))
+            elif i == 1:
+                cat_variations.append(can.group(1) + can.group(2))
+    for cat in cat_variations:
+        match = catlookup(cat, session)
+        if match is not None:
+            found.append(match[0])
+    if not len(found):
+        artistalgo(a, s, session)
+    else:
+        for m in found:
+            logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(m['artist'], m['groupName'], m['groupId']))
+
+
+def artistalgo(a, s, session):
+    pattern_variations = ['(.*) (\(.*\))']
+    song_variations = [s]
+    for i, pat in enumerate(pattern_variations):
+        song_match = re.match(pat, s)
+        if song_match is not None:
+            if i == 0:
+                song_variations.append(song_match.group(1))
+    for song in song_variations:
+        ba, ttt = by_artist(a, song, session)
+        if ttt == 1:
+            for p in ba:
+                logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artists'][0]['name'], p['groupName'], p['groupId']))
+        elif ttt == 2:
+            for p in ba:
+                logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artist'], p['groupName'],p['groupId']))
+
+
 @click.command()
 @pass_pth
 @click.option('--month_number', '-m')
@@ -558,59 +598,19 @@ def ra(ctx, month_number, year_number):
         # ra_items = [('Mike Parker & Donato Dozzy', 'Opalesce', None)] SOLVED
         # ra_items = [('Isolee', 'Pisco', None)] SOLVED
         # ra_items = [('Nick Monaco', 'Half Naked (Adam Port Free Wifi remix)', 'CLR013')] SOLVED
-        # ra_items = [('Leiras', 'Abyssal (James Ruskin Remix)', 'FRACT006')] should find, remove () stuff???
+        # ra_items = [('Leiras', 'Abyssal (James Ruskin Remix)', 'FRACT006')] # SOLVED should find, remove () stuff???
         # ra_items = [('Mike Parker & Donato Dozzy', 'Opalesce',None)] #issue ???
         # ra_items = [('Architectural', 'Cubismo 8.3', 'ARCH 008')] # can_cat_reverse solves
-        #
+        # ra_items = [('The Black Madonna','He Is The Voice I Hear','WSB001')] #
+
         # loop through songs
         for i, (a, s, c) in enumerate(ra_items):
-            logger.info('{}|{}|{}|{}'.format(i+1, a, s, c))
+            logger.info('{:2d}|{}|{}|{}'.format(i+1, a, s, c))
             # look by catalog number 1st
             if c is not None:
-                match = catlookup(c, session)
-                # trying cat number another way [('Nick Monaco', 'Half Naked (Adam Port Free Wifi remix)', 'CLR013')]
-                if match is None:
-                    pattern_catalog = '([a-zA-Z]+)([0-9]+)'
-                    pattern_catalog_reverse = '([a-zA-Z]+) ([0-9]+)'
-                    can_cat = re.match(pattern_catalog, c)
-                    can_cat_reverse = re.match(pattern_catalog_reverse, c)
-                    if can_cat is not None:
-                        c_again = can_cat.group(1) + ' ' + can_cat.group(2)
-                        match = catlookup(c_again, session)
-                    elif can_cat_reverse is not None:
-                        c_again = can_cat_reverse.group(1) + can_cat_reverse.group(2)
-                        match = catlookup(c_again, session)
-                    # no cat number found, then look by artist name
-                if match is None:
-                    ba, ttt = by_artist(a, s, session)
-                    if ttt == 1:
-                        for p in ba:
-                            logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artists'][0]['name'], p['groupName']))
-                    elif ttt == 2:
-                        for p in ba:
-                            logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artist'], p['groupName']))
-                else:
-                    # this is in case catalog number matches sonething but there's way too much distance beween
-                    # the searched artist and what is found ex: [('DJ Koze', 'Driven', 'HT02')] would have matched another ht02 cat number
-                    if SequenceMatcher(None, match[0]['artist'], a).ratio() < 0.9:
-                        ba, ttt = by_artist(a, s, session)
-                        if ttt == 1:
-                            for p in ba:
-                                logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artists'][0]['name'],p['groupName']))
-                        elif ttt == 2:
-                            for p in ba:
-                                logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artist'],p['groupName']))
-                    else:
-                        for m in match:
-                            logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(m['groupId'], m['artist'], m['groupName']))
+                catalgo(a, s, c, session)
             else:
-                ba, ttt = by_artist(a, s, session)
-                if ttt ==1:
-                    for p in ba:
-                        logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artists'][0]['name'], p['groupName']))
-                elif ttt == 2:
-                    for p in ba:
-                        logger.info('https://passtheheadphones.me/torrents.php?id={} |{}|{}'.format(p['groupId'], p['artist'], p['groupName']))
+                artistalgo(a, s, session)
 
 cli.add_command(checker)
 cli.add_command(grabber)
