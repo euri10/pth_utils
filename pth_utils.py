@@ -528,7 +528,10 @@ def catalgo(a, s, c, session):
     for cat in cat_variations:
         match = catlookup(cat, session)
         if match is not None:
-            found.append(match[0])
+            for m in match:
+                dist = SequenceMatcher(None, a, m['artist']).ratio()
+                if dist > 0.9:
+                    found.append(m)
     if not len(found):
         artistalgo(a, s, session)
     else:
@@ -594,15 +597,6 @@ def ra(ctx, month_number, year_number):
 
 
         dl_list = []
-        # ra_items = [('Adam Beyer vs Dense & Pika', 'Going Down (Original Mix)', 'DC166')] SOLVED
-        # ra_items = [('Mike Parker & Donato Dozzy', 'Opalesce', None)] SOLVED
-        # ra_items = [('Isolee', 'Pisco', None)] SOLVED
-        # ra_items = [('Nick Monaco', 'Half Naked (Adam Port Free Wifi remix)', 'CLR013')] SOLVED
-        # ra_items = [('Leiras', 'Abyssal (James Ruskin Remix)', 'FRACT006')] # SOLVED should find, remove () stuff???
-        # ra_items = [('Mike Parker & Donato Dozzy', 'Opalesce',None)] #issue ???
-        # ra_items = [('Architectural', 'Cubismo 8.3', 'ARCH 008')] # can_cat_reverse solves
-        # ra_items = [('The Black Madonna','He Is The Voice I Hear','WSB001')] #
-
         # loop through songs
         for i, (a, s, c) in enumerate(ra_items):
             logger.info('{:2d}|{}|{}|{}'.format(i+1, a, s, c))
