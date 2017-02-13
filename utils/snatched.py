@@ -215,7 +215,7 @@ def catlookup(c, session):
             tgt = [results[i] for i in range(len(results))]
             return tgt
         else:
-            return None
+            return []
 
 @rate_limited(0.5)
 def artistlookup(a, s, session):
@@ -235,14 +235,14 @@ def artistlookup(a, s, session):
         if len(pm):
             return pm
         else:
-            return None
+            return []
     else:
         logger.debug('ajax call failure for {} | {}'.format(a, s))
-        return None
+        return []
 
 
 @rate_limited(0.5)
-def filename(a,s, session):
+def filelookup(a, s, session):
     pm = []
     url_ajax = 'https://passtheheadphones.me/ajax.php'
     params = {'action': 'browse', 'artistname': a, 'filelist': s}
@@ -255,4 +255,4 @@ def filename(a,s, session):
         return pm
     else:
         logger.debug('ajax call failure for {} | {}'.format(a, s))
-        return None
+        return []

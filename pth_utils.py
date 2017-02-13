@@ -19,7 +19,7 @@ from utils.master import RELEASE_TYPE, FORMAT, MEDIA, COLLAGE_CATEGORY, \
 from utils.size import sizeof_fmt
 from utils.snatched import get_upgradables_from_page, notify_artist, \
     subscribe_collage, get_formats, get_display_infos, send_request, catlookup, \
-    artistlookup, filename
+    artistlookup, filelookup
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -506,12 +506,14 @@ def yt_playlist(ctx, youtube_playlist_id, youtube_api_key):
 
 def by_artist(a, s, session):
     pm = artistlookup(a, s, session)
-    if pm is not None:
+    if len(pm):
         return pm, 1
     else:
-        bfn = filename(a, s, session)
-        if bfn is not None:
+        bfn = filelookup(a, s, session)
+        if len(bfn):
             return bfn, 2
+        else:
+            return [], 0
 
 
 def catalgo(a, s, c, session):
@@ -527,19 +529,18 @@ def catalgo(a, s, c, session):
                 cat_variations.append(can.group(1) + can.group(2))
     for cat in cat_variations:
         match = catlookup(cat, session)
-        if match is not None:
+        if len(match):
             for m in match:
-                dist = SequenceMatcher(None, a, m['artist']).ratio()
-                if dist > 0.9:
-                    found.append(m)
-    if not len(found):
-        artistalgo(a, s, session)
-    else:
-        for m in found:
-            logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(m['artist'], m['groupName'], m['groupId']))
-
+                try:
+                    dist = SequenceMatcher(None, a, m['artist']).ratio()
+                    if dist > 0.9:
+                        found.append((m, 2))
+                except KeyError as e:
+                    logging.debug('key error in {}'.format(m))
+    return found
 
 def artistalgo(a, s, session):
+    found = []
     pattern_variations = ['(.*) (\(.*\))']
     song_variations = [s]
     for i, pat in enumerate(pattern_variations):
@@ -549,19 +550,16 @@ def artistalgo(a, s, session):
                 song_variations.append(song_match.group(1))
     for song in song_variations:
         ba, ttt = by_artist(a, song, session)
-        if ttt == 1:
-            for p in ba:
-                logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artists'][0]['name'], p['groupName'], p['groupId']))
-        elif ttt == 2:
-            for p in ba:
-                logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artist'], p['groupName'],p['groupId']))
-
+        for p in ba:
+            found.append((p, ttt))
+    return found
 
 @click.command()
 @pass_pth
 @click.option('--month_number', '-m')
 @click.option('--year_number', '-y')
-def ra(ctx, month_number, year_number):
+@click.option('--collage_id', '-c')
+def ra(ctx, month_number, year_number, collage_id):
     # log into pth, gets the id
     session = requests.Session()
     session.headers = headers
@@ -570,17 +568,23 @@ def ra(ctx, month_number, year_number):
     my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
 
     url_ra = 'https://www.residentadvisor.net/dj-charts.aspx'
-    params_ra = {'top':50, 'mn': month_number, 'yr': year_number}
+    if month_number is None:
+        params_ra = {'top': 100, 'yr': year_number}
+        top = 100
+    else:
+        params_ra = {'top': 50, 'mn': month_number, 'yr': year_number}
+        top = 50
+
     req_ra = requests.get(url=url_ra, params=params_ra)
     if not req_ra.status_code == 200:
         logger.debug('RA request failed')
     else:
         chartpage = html.fromstring(req_ra.content)
         artist_links = chartpage.xpath('//table[@id="tracks"]/tr/td[3]')
-        if len(artist_links ) != 50:
+        if len(artist_links ) != top:
             logger.debug('error not 50 found')
         song_links = chartpage.xpath('//table[@id="tracks"]/tr/td[4]')
-        if len(song_links ) != 50:
+        if len(song_links ) != top:
             logger.debug('error not 50 found')
         catalogs = chartpage.xpath('//table[@id="tracks"]/tr/td[5]')
         ra_items = []
@@ -592,19 +596,60 @@ def ra(ctx, month_number, year_number):
             else:
                 cat_number = None
             ra_items.append((artist, song, cat_number))
-        if len(ra_items) != 50:
+        if len(ra_items) != top:
             logger.debug('error not 50 found')
 
 
         dl_list = []
         # loop through songs
+        #ra_items = [('Floorplan','Never Grow Old (Re-Plant)', None)]
+        #ra_items = [('Ten Walls','Walking With Elephants','BOSO 001')]
+        # ra_items = [('Recondite','Caldera','HFT035')]
         for i, (a, s, c) in enumerate(ra_items):
-            logger.info('{:2d}|{}|{}|{}'.format(i+1, a, s, c))
+            found = []
+            ttt = 0
+            logger.info('{:2d}(\'{}\',\'{}\',\'{}\')'.format(i+1, a, s, c))
             # look by catalog number 1st
             if c is not None:
-                catalgo(a, s, c, session)
+                found = catalgo(a, s, c, session)
+                if not len(found):
+                    found = artistalgo(a, s, session)
             else:
-                artistalgo(a, s, session)
+                found = artistalgo(a, s, session)
+
+            for p, ttt in found:
+                if ttt == 1:
+                    logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artists'][0]['name'], p['groupName'],p['groupId']))
+                elif ttt == 2:
+                    logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artist'], p['groupName'], p['groupId']))
+
+
+    logout(authkey=authkey, session=session)
+
+@click.command()
+@pass_pth
+def reqfiller(ctx):
+    # log into pth, gets the id
+    session = requests.Session()
+    session.headers = headers
+    if isinstance(ctx.pth_password, HiddenPassword):
+        pth_password = ctx.pth_password.password
+    my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
+
+    url_ajax = 'https://passtheheadphones.me/ajax.php'
+    params = {'action': 'requests', 'page': 55}
+    r = session.get(url_ajax, params=params)
+    if r.status_code == 200 and r.json()['status'] == 'success':
+        for rr in r.json()['response']['results']:
+            if not rr['isFilled'] and rr['categoryId'] == 1:
+                logger.info('Request: https://passtheheadphones.me/requests.php?action=view&id={}'.format(rr['requestId']))
+                (a, s, c) = (rr['artists'][0][0]['name'], rr['title'], rr['catalogueNumber'])
+                if c is not None:
+                    catalgo(a, s, c, session)
+                else:
+                    artistalgo(a, s, session)
+
+    logout(authkey=authkey, session=session)
 
 cli.add_command(checker)
 cli.add_command(grabber)
@@ -615,6 +660,7 @@ cli.add_command(displayer)
 cli.add_command(mixer)
 cli.add_command(yt_playlist)
 cli.add_command(ra)
+cli.add_command(reqfiller)
 
 if __name__ == '__main__':
     cli()
