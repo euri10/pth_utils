@@ -7,7 +7,6 @@ import click
 import logging
 import requests
 from lxml import html
-
 from apiclient.discovery import build
 
 from utils.get_torrent import get_torrent
@@ -439,11 +438,12 @@ def mixer(ctx, mix_url):
                         'Referer': 'http://mixes.beatport.com/'}
     session_bp = requests.session()
     session_bp.headers = headers_beatport
-    mix_url = 'http://mixes.beatport.com/mix/chillout-deep-house-tropical-beach-mix/129388'
 
     r = session_bp.get(mix_url)
     mixpage = html.fromstring(r.content)
     titles = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[5]/a/text()')
+    artists_td = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[6]')
+    artists = [art.xpath('a/text()') for art in artists_td]
     titles_links = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[5]/a/@href')
     labels_links = mixpage.xpath('//table[@id="tracks"]/tbody/tr/td[7]/a/@href')
     logger.info(r)
@@ -454,16 +454,15 @@ def mixer(ctx, mix_url):
         pth_password = ctx.pth_password.password
     my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
 
-    url = 'https://passtheheadphones.me/ajax.php'
-    for title in titles:
-        # remove remix / original mix stuff
-        if re.match('(.*) (\(.*\))', title) is not None:
-            stitle = re.match('(.*) (\(.*\))', title).group(1)
-        else:
-            stitle = title
-        search_params = {'action': 'browse', 'filelist': stitle}
-        rs = session.get(url=url, params=search_params)
-        logger.info(len(rs.json()['response']['results']))
+    for (at, s) in zip(artists, titles):
+        logger.info('>>>Looking for {} by {}'.format(s, at))
+        for a in at:
+            found = artistalgo(a, s, session)
+            for p, ttt in found:
+                if ttt == 1:
+                    logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artists'][0]['name'], p['groupName'], p['groupId']))
+                elif ttt == 2:
+                    logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artist'], p['groupName'], p['groupId']))
     logout(authkey=authkey, session=session)
 
 
@@ -539,6 +538,7 @@ def catalgo(a, s, c, session):
                     logging.debug('key error in {}'.format(m))
     return found
 
+
 def artistalgo(a, s, session):
     found = []
     pattern_variations = ['(.*) (\(.*\))']
@@ -553,6 +553,7 @@ def artistalgo(a, s, session):
         for p in ba:
             found.append((p, ttt))
     return found
+
 
 @click.command()
 @pass_pth
@@ -581,10 +582,10 @@ def ra(ctx, month_number, year_number, collage_id):
     else:
         chartpage = html.fromstring(req_ra.content)
         artist_links = chartpage.xpath('//table[@id="tracks"]/tr/td[3]')
-        if len(artist_links ) != top:
+        if len(artist_links) != top:
             logger.debug('error not 50 found')
         song_links = chartpage.xpath('//table[@id="tracks"]/tr/td[4]')
-        if len(song_links ) != top:
+        if len(song_links) != top:
             logger.debug('error not 50 found')
         catalogs = chartpage.xpath('//table[@id="tracks"]/tr/td[5]')
         ra_items = []
@@ -599,16 +600,15 @@ def ra(ctx, month_number, year_number, collage_id):
         if len(ra_items) != top:
             logger.debug('error not 50 found')
 
-
         dl_list = []
         # loop through songs
-        #ra_items = [('Floorplan','Never Grow Old (Re-Plant)', None)]
-        #ra_items = [('Ten Walls','Walking With Elephants','BOSO 001')]
+        # ra_items = [('Floorplan','Never Grow Old (Re-Plant)', None)]
+        # ra_items = [('Ten Walls','Walking With Elephants','BOSO 001')]
         # ra_items = [('Recondite','Caldera','HFT035')]
         for i, (a, s, c) in enumerate(ra_items):
             found = []
             ttt = 0
-            logger.info('{:2d}(\'{}\',\'{}\',\'{}\')'.format(i+1, a, s, c))
+            logger.info('{:2d}(\'{}\',\'{}\',\'{}\')'.format(i + 1, a, s, c))
             # look by catalog number 1st
             if c is not None:
                 found = catalgo(a, s, c, session)
@@ -619,12 +619,17 @@ def ra(ctx, month_number, year_number, collage_id):
 
             for p, ttt in found:
                 if ttt == 1:
-                    logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artists'][0]['name'], p['groupName'],p['groupId']))
+                    logger.info(
+                        '  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(
+                            p['artists'][0]['name'], p['groupName'],
+                            p['groupId']))
                 elif ttt == 2:
-                    logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artist'], p['groupName'], p['groupId']))
-
+                    logger.info(
+                        '  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(
+                            p['artist'], p['groupName'], p['groupId']))
 
     logout(authkey=authkey, session=session)
+
 
 @click.command()
 @pass_pth
@@ -637,19 +642,36 @@ def reqfiller(ctx):
     my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
 
     url_ajax = 'https://passtheheadphones.me/ajax.php'
-    params = {'action': 'requests', 'page': 55}
+    params = {'action': 'requests', 'page': 88}
     r = session.get(url_ajax, params=params)
     if r.status_code == 200 and r.json()['status'] == 'success':
         for rr in r.json()['response']['results']:
             if not rr['isFilled'] and rr['categoryId'] == 1:
-                logger.info('Request: https://passtheheadphones.me/requests.php?action=view&id={}'.format(rr['requestId']))
-                (a, s, c) = (rr['artists'][0][0]['name'], rr['title'], rr['catalogueNumber'])
+                # logger.info('Request: https://passtheheadphones.me/requests.php?action=view&id={}'.format(rr['requestId']))
+                (a, s, c) = (
+                rr['artists'][0][0]['name'], rr['title'], rr['catalogueNumber'])
                 if c is not None:
-                    catalgo(a, s, c, session)
+                    found = catalgo(a, s, c, session)
+                    if not len(found):
+                        found = artistalgo(a, s, session)
                 else:
-                    artistalgo(a, s, session)
+                    found = artistalgo(a, s, session)
+                for p, ttt in found:
+                    logger.info(
+                        'Request: https://passtheheadphones.me/requests.php?action=view&id={}'.format(
+                            rr['requestId']))
+                    if ttt == 1:
+                        logger.info(
+                            '  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(
+                                p['artists'][0]['name'], p['groupName'],
+                                p['groupId']))
+                    elif ttt == 2:
+                        logger.info(
+                            '  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(
+                                p['artist'], p['groupName'], p['groupId']))
 
     logout(authkey=authkey, session=session)
+
 
 cli.add_command(checker)
 cli.add_command(grabber)
