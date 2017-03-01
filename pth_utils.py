@@ -18,7 +18,7 @@ from utils.master import RELEASE_TYPE, FORMAT, MEDIA, COLLAGE_CATEGORY, \
 from utils.size import sizeof_fmt
 from utils.snatched import get_upgradables_from_page, notify_artist, \
     subscribe_collage, get_formats, get_display_infos, send_request, catlookup, \
-    artistlookup, filelookup
+    artistlookup, filelookup, add_to_collage, post_collage_comment
 
 logger = logging.getLogger(__name__)
 logging.basicConfig()
@@ -81,7 +81,7 @@ def checker(ctx, notify, make_request):
     upgradables = []
     notifiables = []
     requests_list = []
-    snatched_url = 'https://passtheheadphones.me/torrents.php'
+    snatched_url = 'https://redacted.ch/torrents.php'
     params = {'page': 1, 'type': 'snatched', 'userid': my_id}
     r = session.get(snatched_url, params=params)
     if r.status_code != 200:
@@ -132,7 +132,7 @@ def checker(ctx, notify, make_request):
                 if notify:
                     notifiables.append(snatch[3])
                 if make_request:
-                    # https://passtheheadphones.me/requests.php?action=new&groupid=269034
+                    # https://redacted.ch/requests.php?action=new&groupid=269034
                     send_request(authkey, session, torrent_group_id, my_id)
     for upgradable in upgradables:
         logger.info(
@@ -179,7 +179,7 @@ def grabber(ctx, artists, collages, releases, formats,
         pth_password = ctx.pth_password.password
     my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
 
-    url = 'https://passtheheadphones.me/ajax.php'
+    url = 'https://redacted.ch/ajax.php'
     dl_list = []
     for artist in artists:
         params = {'action': 'artist', 'id': artist}
@@ -236,7 +236,7 @@ def similar(ctx, lastfm_api_key, artists,
         pth_password = ctx.pth_password.password
     my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
 
-    url = 'https://passtheheadphones.me/ajax.php'
+    url = 'https://redacted.ch/ajax.php'
     for artist in artists:
         params = {'action': 'artist', 'id': artist}
         r = session.get(url, params=params)
@@ -264,7 +264,7 @@ def similar(ctx, lastfm_api_key, artists,
                     datasim = {'action': 'add_similar', 'auth': authkey,
                                'artistid': artist, 'artistname': sim}
                     createsim = session.post(
-                        'https://passtheheadphones.me/artist.php', data=datasim)
+                        'https://redacted.ch/artist.php', data=datasim)
                     if createsim.status_code == 200 and sim.encode() not in createsim.content:
                         logger.info('not added')
                     else:
@@ -302,7 +302,7 @@ def collage_notify(ctx, search, tags, tags_type, categories,
         tags_type = 1
     else:
         tags_type = 0
-    url = 'https://passtheheadphones.me/collages.php'
+    url = 'https://redacted.ch/collages.php'
     params = {'action': 'search', 'search': search, 'tags': ','.join(tags),
               'tags_type': tags_type, 'cats[0]': cats_filter[0],
               'cats[1]': cats_filter[1], 'cats[2]': cats_filter[2],
@@ -393,7 +393,7 @@ def displayer(ctx, outfile):
     if isinstance(ctx.pth_password, HiddenPassword):
         pth_password = ctx.pth_password.password
     my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
-    snatched_url = 'https://passtheheadphones.me/torrents.php'
+    snatched_url = 'https://redacted.ch/torrents.php'
     params = {'page': 1, 'type': 'snatched', 'userid': my_id}
     r = session.get(snatched_url, params=params)
     if r.status_code != 200:
@@ -460,9 +460,9 @@ def mixer(ctx, mix_url):
             found = artistalgo(a, s, session)
             for p, ttt in found:
                 if ttt == 1:
-                    logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artists'][0]['name'], p['groupName'], p['groupId']))
+                    logger.info('  |{}|{}|https://redacted.ch/torrents.php?id={}'.format(p['artists'][0]['name'], p['groupName'], p['groupId']))
                 elif ttt == 2:
-                    logger.info('  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(p['artist'], p['groupName'], p['groupId']))
+                    logger.info('  |{}|{}|https://redacted.ch/torrents.php?id={}'.format(p['artist'], p['groupName'], p['groupId']))
     logout(authkey=authkey, session=session)
 
 
@@ -495,7 +495,7 @@ def yt_playlist(ctx, youtube_playlist_id, youtube_api_key):
     for t in titles:
         ctitles.append(re.sub('\s*\([^\)]*\)\s*', '', t))
 
-    url = 'https://passtheheadphones.me/ajax.php'
+    url = 'https://redacted.ch/ajax.php'
     for ct in ctitles:
         params = {'action': 'browse', 'searchstr': ct}
         r = session.get(url, params=params)
@@ -555,6 +555,9 @@ def artistalgo(a, s, session):
     return found
 
 
+
+
+
 @click.command()
 @pass_pth
 @click.option('--month_number', '-m')
@@ -601,14 +604,12 @@ def ra(ctx, month_number, year_number, collage_id):
             logger.debug('error not 50 found')
 
         dl_list = []
+        missing = []
         # loop through songs
-        # ra_items = [('Floorplan','Never Grow Old (Re-Plant)', None)]
-        # ra_items = [('Ten Walls','Walking With Elephants','BOSO 001')]
-        # ra_items = [('Recondite','Caldera','HFT035')]
-        for i, (a, s, c) in enumerate(ra_items):
+        for pos, (a, s, c) in enumerate(ra_items):
             found = []
             ttt = 0
-            logger.info('{:2d}(\'{}\',\'{}\',\'{}\')'.format(i + 1, a, s, c))
+            logger.info('{:2d}|   |{}|{}|{}|'.format(pos + 1, a, s, c))
             # look by catalog number 1st
             if c is not None:
                 found = catalgo(a, s, c, session)
@@ -617,17 +618,23 @@ def ra(ctx, month_number, year_number, collage_id):
             else:
                 found = artistalgo(a, s, session)
 
-            for p, ttt in found:
+            for i, (p, ttt) in enumerate(found):
                 if ttt == 1:
-                    logger.info(
-                        '  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(
-                            p['artists'][0]['name'], p['groupName'],
-                            p['groupId']))
+                    logger.info('  |[{}]|{}|{}|https://redacted.ch/torrents.php?id={}'.format(i, p['artists'][0]['name'], p['groupName'],p['groupId']))
                 elif ttt == 2:
-                    logger.info(
-                        '  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(
-                            p['artist'], p['groupName'], p['groupId']))
-
+                    logger.info('  |[{}]|{}|{}|https://redacted.ch/torrents.php?id={}'.format(i, p['artist'], p['groupName'], p['groupId']))
+            choices = list(range(len(found)))
+            if collage_id and len(found):
+                value = click.prompt('Please enter the song to add', type=click.IntRange(0, len(found)), default=-1)
+                if value == -1:
+                    logger.info('Skipping')
+                    missing.append((pos+1, a, s, c))
+                else:
+                    gid = found[value][0]['groupId']
+                    position = pos + 1
+                    add_to_collage(collage_id, gid, position, session, authkey)
+        if missing:
+            post_collage_comment(collage_id, missing, session, authkey)
     logout(authkey=authkey, session=session)
 
 
@@ -641,13 +648,13 @@ def reqfiller(ctx):
         pth_password = ctx.pth_password.password
     my_id, auth, passkey, authkey = login(ctx.pth_user, pth_password, session)
 
-    url_ajax = 'https://passtheheadphones.me/ajax.php'
+    url_ajax = 'https://redacted.ch/ajax.php'
     params = {'action': 'requests', 'page': 88}
     r = session.get(url_ajax, params=params)
     if r.status_code == 200 and r.json()['status'] == 'success':
         for rr in r.json()['response']['results']:
             if not rr['isFilled'] and rr['categoryId'] == 1:
-                # logger.info('Request: https://passtheheadphones.me/requests.php?action=view&id={}'.format(rr['requestId']))
+                # logger.info('Request: https://redacted.ch/requests.php?action=view&id={}'.format(rr['requestId']))
                 (a, s, c) = (
                 rr['artists'][0][0]['name'], rr['title'], rr['catalogueNumber'])
                 if c is not None:
@@ -658,16 +665,16 @@ def reqfiller(ctx):
                     found = artistalgo(a, s, session)
                 for p, ttt in found:
                     logger.info(
-                        'Request: https://passtheheadphones.me/requests.php?action=view&id={}'.format(
+                        'Request: https://redacted.ch/requests.php?action=view&id={}'.format(
                             rr['requestId']))
                     if ttt == 1:
                         logger.info(
-                            '  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(
+                            '  |{}|{}|https://redacted.ch/torrents.php?id={}'.format(
                                 p['artists'][0]['name'], p['groupName'],
                                 p['groupId']))
                     elif ttt == 2:
                         logger.info(
-                            '  |{}|{}|https://passtheheadphones.me/torrents.php?id={}'.format(
+                            '  |{}|{}|https://redacted.ch/torrents.php?id={}'.format(
                                 p['artist'], p['groupName'], p['groupId']))
 
     logout(authkey=authkey, session=session)

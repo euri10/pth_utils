@@ -42,7 +42,7 @@ def rate_limited(max_per_second):
 @rate_limited(0.5)
 def get_formats(torrent_group_id, session):
     """Get formats for a given torrent group, uses the API because it can !"""
-    url = 'https://passtheheadphones.me/ajax.php'
+    url = 'https://redacted.ch/ajax.php'
     params = {'action': 'torrentgroup', 'id': torrent_group_id}
     logger.info('getting formats of {}'.format(torrent_group_id))
     # rate limit hit if too fast, awful hard-coding
@@ -59,7 +59,7 @@ def get_formats(torrent_group_id, session):
 def get_display_infos(torrent_id, session):
     """Get formats for a given torrent id, uses the API because it can !"""
     # ajax.php?action=torrent&id=<Torrent Id>
-    url = 'https://passtheheadphones.me/ajax.php'
+    url = 'https://redacted.ch/ajax.php'
     params = {'action': 'torrent', 'id': torrent_id}
     logger.info('getting info for {}'.format(torrent_id))
     # rate limit hit if too fast, awful hard-coding
@@ -71,7 +71,7 @@ def get_display_infos(torrent_id, session):
 
 def notify_artist(authkey, session, artists_list, notification_label):
     """Set notification for all artists"""
-    url = 'https://passtheheadphones.me/user.php'
+    url = 'https://redacted.ch/user.php'
     data = {'formid': 1, 'action': 'notify_handle', 'auth': authkey,
             'label1': notification_label,
             'artists1': ','.join(artists_list), 'formats1[]': 'FLAC', }
@@ -85,7 +85,7 @@ def notify_artist(authkey, session, artists_list, notification_label):
 def send_request(authkey, session, torrent_group_id, my_id):
 
     #checking torrent page to see if there's a request already
-    url_torrent = 'https://passtheheadphones.me/torrents.php'
+    url_torrent = 'https://redacted.ch/torrents.php'
     params_torrent = {'id': torrent_group_id}
     rt = session.get(url=url_torrent, params=params_torrent)
     torrent_page = html.fromstring(rt.content)
@@ -94,7 +94,7 @@ def send_request(authkey, session, torrent_group_id, my_id):
             existing_requests = torrent_page.xpath('//table[@id="requests"]/tr[contains(@class,"requestrows")]/td[1]/a/@href')
             for er in existing_requests:
                 rid = re.match('requests\.php\?action=view&id=(\d+)', er).group(1)
-                url = 'https://passtheheadphones.me/ajax.php'
+                url = 'https://redacted.ch/ajax.php'
                 params_req = {'action':'request', 'id': rid}
                 rreq = session.get(url, params=params_req)
                 if rreq.json()['status'] == 'failure':
@@ -104,7 +104,7 @@ def send_request(authkey, session, torrent_group_id, my_id):
                         logger.debug('Request already done on {}'.format(torrent_group_id))
                         return None
     logger.debug('Request make on {}'.format(torrent_group_id))
-    url = 'https://passtheheadphones.me/requests.php'
+    url = 'https://redacted.ch/requests.php'
     params = {'action': 'new', 'groupid': torrent_group_id}
     r = session.get(url=url, params=params)
     req_page = html.fromstring(r.content)
@@ -145,7 +145,7 @@ def send_request(authkey, session, torrent_group_id, my_id):
 
 def subscribe_collage(my_auth, session, collage_id):
     """Subscribe a collage"""
-    url = 'https://passtheheadphones.me/userhistory.php'
+    url = 'https://redacted.ch/userhistory.php'
     params = {'action': 'collage_subscribe', 'collageid': collage_id,
               'auth': my_auth}
     r = session.get(url, params=params)
@@ -166,7 +166,7 @@ def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
     """On a snatched list page retrieve the torrents that could be upgraded
     from MP3 to FLAC """
     logger.debug('entering get_upgradables_from_page')
-    snatched_url = 'https://passtheheadphones.me/torrents.php'
+    snatched_url = 'https://redacted.ch/torrents.php'
     params = {'page': page, 'type': 'snatched', 'userid': my_id}
     r = session.get(snatched_url, params=params)
     if r.status_code != 200:
@@ -202,13 +202,13 @@ def get_upgradables_from_page(page, my_id, session, auth, passkey, authkey):
 
 @rate_limited(0.5)
 def catlookup(c, session):
-    url_ajax = 'https://passtheheadphones.me/ajax.php'
+    url_ajax = 'https://redacted.ch/ajax.php'
     params = {'action': 'browse', 'cataloguenumber': c}
     r = session.get(url_ajax, params=params)
     if not r.status_code == 200:
         logger.debug('issue with artist')
     else:
-        # https://passtheheadphones.me/torrents.php?id=341755
+        # https://redacted.ch/torrents.php?id=341755
         logger.debug(r.json())
         results = r.json()['response']['results']
         if len(results):
@@ -220,7 +220,7 @@ def catlookup(c, session):
 @rate_limited(0.5)
 def artistlookup(a, s, session):
     pm = []
-    url_ajax = 'https://passtheheadphones.me/ajax.php'
+    url_ajax = 'https://redacted.ch/ajax.php'
     params = {'action': 'artist', 'artistname': a}
     r = session.get(url_ajax, params=params)
     if not r.status_code == 200:
@@ -244,7 +244,7 @@ def artistlookup(a, s, session):
 @rate_limited(0.5)
 def filelookup(a, s, session):
     pm = []
-    url_ajax = 'https://passtheheadphones.me/ajax.php'
+    url_ajax = 'https://redacted.ch/ajax.php'
     params = {'action': 'browse', 'artistname': a, 'filelist': s}
     r = session.get(url_ajax, params=params)
     if not r.status_code == 200:
@@ -256,3 +256,40 @@ def filelookup(a, s, session):
     else:
         logger.debug('ajax call failure for {} | {}'.format(a, s))
         return []
+
+
+def add_to_collage(collage_id, gid, position, session, authkey):
+    url = 'https://redacted.ch/collages.php'
+    # add torrent to collage
+    data = {'action': 'add_torrent', 'auth': authkey,
+            'collageid': collage_id,
+            'url':  'https://redacted.ch/torrents.php?id='+str(gid)}
+    r = session.post(url, data=data)
+    if r.status_code == 200 and b'Error' not in r.content:
+        logger.info('collage added {}'.format(gid))
+    else:
+        logger.error('failed ? {}'.format(gid))
+
+    #manage position
+    if position:
+        data_manage= {'sort': position, 'action': 'manage_handle', 'auth': authkey, 'collageid': collage_id, 'groupid': gid, 'submit': 'Edit'}
+        r = session.post(url, data=data_manage)
+        if r.status_code == 200 and b'Error' not in r.content:
+            logger.info('position changed {} to {}'.format(gid, position))
+        else:
+            logger.error('failed position? {}'.format(gid))
+
+
+def post_collage_comment(collage_id, missing, session, authkey):
+    url = 'https://redacted.ch/comments.php'
+    text_missing = ''
+    for m in missing:
+        pos, a, s, c = m
+        text_missing += '{:2d}|{}|{}|{}|\n'.format(pos, a, s, c)
+    text = '{} Missing:\n{}'.format(len(missing) ,text_missing)
+    data = {'action': 'take_post', 'page':'collages', 'auth': authkey, 'pageid': collage_id, 'body': text}
+    r = session.post(url, data=data)
+    if r.status_code == 200 and b'Error' not in r.content:
+        logger.info('missing comment added'.format())
+    else:
+        logger.error('failed ?'.format())

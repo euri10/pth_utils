@@ -5,7 +5,7 @@ import time
 def get_torrent(torrent_id, authkey, passkey, session, save_directory):
     """Downloads the torrent at torrent_id using the authkey and passkey"""
     filename = os.path.join(save_directory, str(torrent_id)+'.torrent')
-    torrentpage = 'https://passtheheadphones.me/torrents.php'
+    torrentpage = 'https://redacted.ch/torrents.php'
     params = {'action': 'download', 'id': torrent_id}
     if authkey:
         params['authkey'] = authkey
