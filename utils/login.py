@@ -31,8 +31,7 @@ def login(username, password, session):
     user_id, auth, passkey, authkey = re.match(
         'feeds\.php\?feed=feed_news&user=(.*)&auth=(.*)&passkey=(.*)&authkey=(.*)',
         mainpage.xpath(
-            '//head//link[@type="application/rss+xml"][@title="PassTheHeadphones - News"]/@href')[
-            0]).groups()
+            '//head//link[@type="application/rss+xml"][@title="Redacted - News"]/@href')[0]).groups()
     return user_id, auth, passkey, authkey
 
 
